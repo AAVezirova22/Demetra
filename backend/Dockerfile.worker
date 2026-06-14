@@ -1,0 +1,11 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+# Assume the worker script will be defined in package.json
+CMD ["npm", "run", "worker"]
