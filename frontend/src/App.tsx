@@ -1,72 +1,110 @@
-import { useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
-import Spline from '@splinetool/react-spline';
+import React, { useLayoutEffect, useRef } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
+import './app.css';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+// Register GSAP plugins
+gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
-function App() {
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [notifications, setNotifications] = useState<string[]>([]);
-  const [isSplineLoaded, setIsSplineLoaded] = useState(false);
+export default function App() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const arrowRef = useRef<SVGRectElement>(null);
 
-  useEffect(() => {
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
-    document.body.style.margin = '0';
-    document.body.style.padding = '0';
-    document.body.style.backgroundColor = 'black';
+  useLayoutEffect(() => {
+    // Scope animations to this component container
+    const ctx = gsap.context(() => {
+      
+      // 1. Parallax Timeline
+      gsap.timeline({
+        scrollTrigger: {
+          trigger: '.scrollDist',
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: 1,
+        }
+      })
+      .fromTo('.sky', { y: 0 }, { y: -200 }, 0)
+      .fromTo('.cloud1', { y: 100 }, { y: -800 }, 0)
+      .fromTo('.cloud2', { y: -150 }, { y: -500 }, 0)
+      .fromTo('.cloud3', { y: -50 }, { y: -650 }, 0)
+      .fromTo('.mountBg', { y: -10 }, { y: -100 }, 0)
+      .fromTo('.mountMg', { y: -30 }, { y: -250 }, 0)
+      .fromTo('.mountFg', { y: -50 }, { y: -600 }, 0);
 
-    const newSocket = io(SOCKET_URL);
-    setSocket(newSocket);
+      // 2. Button Interaction Animations
+      const btn = arrowRef.current;
+      if (btn) {
+        const onMouseEnter = () => {
+          gsap.to('.arrow', { y: 10, duration: 0.8, ease: 'back.inOut(3)', overwrite: 'auto' });
+        };
+        const onMouseLeave = () => {
+          gsap.to('.arrow', { y: 0, duration: 0.5, ease: 'power3.out', overwrite: 'auto' });
+        };
+        const onClick = () => {
+          gsap.to(window, { scrollTo: window.innerHeight, duration: 1.5, ease: 'power1.inOut' });
+        };
 
-    newSocket.on('RegistrationConfirmed', (data) => {
-      setNotifications(prev => [
-        `Yay! Registration confirmed for event ${data.eventId}!`, 
-        ...prev
-      ]);
-    });
+        btn.addEventListener('mouseenter', onMouseEnter);
+        btn.addEventListener('mouseleave', onMouseLeave);
+        btn.addEventListener('click', onClick);
 
-    return () => {
-      newSocket.disconnect();
-    };
+        // Cleanup event listeners
+        return () => {
+          btn.removeEventListener('mouseenter', onMouseEnter);
+          btn.removeEventListener('mouseleave', onMouseLeave);
+          btn.removeEventListener('click', onClick);
+        };
+      }
+    }, containerRef);
+
+    return () => ctx.revert(); // Clean up all GSAP timelines/triggers on unmount
   }, []);
 
   return (
-    <main className="fixed inset-0 w-screen h-screen overflow-hidden bg-black text-white font-sans select-none">
+    // inline styles here ensure we violently override any parent flexboxes or grid constraints
+    <div 
+      ref={containerRef} 
+      className="app-container" 
+      style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh' }}
+    >
+      <div className="scrollDist"></div>
       
-      {/* Background Spline Container */}
-      <div 
-        className={`absolute inset-0 z-0 w-full h-full pointer-events-auto bg-black transition-all duration-700 ease-in-out ${
-          isSplineLoaded ? 'opacity-100 scale-170' : 'opacity-0 scale-100'
-        }`}
-      >
-        {/* scale-110 above zooms the entire 3D scene canvas in by 10% */}
-        <Spline 
-          scene="https://prod.spline.design/ENn3DB1pDsuCgX2K/scene.splinecode" 
-          onLoad={() => setIsSplineLoaded(true)} 
-        />
-      </div>
-
-      {/* Live Notifications Overlay Layer */}
-      {isSplineLoaded && (
-        <div className="absolute inset-0 z-10 flex justify-end items-start p-6 md:p-12 pointer-events-none overflow-hidden animate-fade-in">
-          <div className="w-full md:w-80 max-h-full flex flex-col gap-3 overflow-y-auto pointer-events-auto">
-            {notifications.map((notif, index) => (
-              <div 
-                key={index} 
-                className="bg-slate-900/70 border border-slate-800 text-slate-100 p-4 rounded-xl shadow-2xl text-xs md:text-sm backdrop-blur-md"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <p className="font-medium">{notif}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </main>
+      <main style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', maxWidth: 'none', transform: 'none' }}>
+        <svg 
+          viewBox="0 0 1200 800" 
+          xmlns="http://www.w3.org/2000/svg"
+          preserveAspectRatio="xMidYMid slice"
+          style={{ width: '100%', height: '100%' }}
+        >
+          <defs>
+            <mask id="m">
+              <g className="cloud1">
+                <rect fill="#fff" width="100%" height="801" y="799" />
+                <image href="https://assets.codepen.io/721952/cloud1Mask.jpg" width="1200" height="800"/>
+              </g>
+            </mask>
+          </defs>
+          
+          <image className="sky" href="https://assets.codepen.io/721952/sky.jpg" width="1200" height="590" />
+          <image className="mountBg" href="https://assets.codepen.io/721952/mountBg.png" width="1200" height="800"/>    
+          <image className="mountMg" href="https://assets.codepen.io/721952/mountMg.png" width="1200" height="800"/>    
+          <image className="cloud2" href="https://assets.codepen.io/721952/cloud2.png" width="1200" height="800"/>    
+          <image className="mountFg" href="https://assets.codepen.io/721952/mountFg.png" width="1200" height="800"/>
+          <image className="cloud1" href="https://assets.codepen.io/721952/cloud1.png" width="1200" height="800"/>
+          <image className="cloud3" href="https://assets.codepen.io/721952/cloud3.png" width="1200" height="800"/>
+          
+          <text fill="#fff" x="350" y="200">DEMETRA</text>
+          <polyline className="arrow" fill="#fff" points="599,250 599,289 590,279 590,282 600,292 610,282 610,279 601,289 601,250" />
+          
+          <g mask="url(#m)">
+            <rect fill="#fff" width="100%" height="100%" />      
+            <text x="350" y="200" fill="#162a43">School events</text>
+          </g>
+          
+          <rect ref={arrowRef} id="arrow-btn" width="100" height="100" opacity="0" x="550" y="220" />
+        </svg>
+      </main>
+    </div>
   );
 }
-
-export default App;
