@@ -2,6 +2,7 @@ import React, { useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
+import Navbar from './Navbar';
 import './app.css';
 
 // Register GSAP plugins
@@ -12,7 +13,6 @@ export default function App() {
   const arrowRef = useRef<SVGRectElement>(null);
 
   useLayoutEffect(() => {
-    // Scope animations to this component container
     const ctx = gsap.context(() => {
       
       // 1. Parallax Timeline
@@ -49,7 +49,6 @@ export default function App() {
         btn.addEventListener('mouseleave', onMouseLeave);
         btn.addEventListener('click', onClick);
 
-        // Cleanup event listeners
         return () => {
           btn.removeEventListener('mouseenter', onMouseEnter);
           btn.removeEventListener('mouseleave', onMouseLeave);
@@ -58,16 +57,18 @@ export default function App() {
       }
     }, containerRef);
 
-    return () => ctx.revert(); // Clean up all GSAP timelines/triggers on unmount
+    return () => ctx.revert();
   }, []);
 
   return (
-    // inline styles here ensure we violently override any parent flexboxes or grid constraints
     <div 
       ref={containerRef} 
       className="app-container" 
       style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh' }}
     >
+      {/* Navigation overlay */}
+      <Navbar />
+
       <div className="scrollDist"></div>
       
       <main style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', maxWidth: 'none', transform: 'none' }}>
@@ -87,22 +88,22 @@ export default function App() {
           </defs>
           
           <image className="sky" href="https://assets.codepen.io/721952/sky.jpg" width="1200" height="590" />
-          <image className="mountBg" href="https://assets.codepen.io/721952/mountBg.png" width="1200" height="800"/>    
-          <image className="mountMg" href="https://assets.codepen.io/721952/mountMg.png" width="1200" height="800"/>    
-          <image className="cloud2" href="https://assets.codepen.io/721952/cloud2.png" width="1200" height="800"/>    
-          <image className="mountFg" href="https://assets.codepen.io/721952/mountFg.png" width="1200" height="800"/>
-          <image className="cloud1" href="https://assets.codepen.io/721952/cloud1.png" width="1200" height="800"/>
-          <image className="cloud3" href="https://assets.codepen.io/721952/cloud3.png" width="1200" height="800"/>
           
-          <text fill="#fff" x="350" y="200">DEMETRA</text>
-          <polyline className="arrow" fill="#fff" points="599,250 599,289 590,279 590,282 600,292 610,282 610,279 601,289 601,250" />
+          <image className="mountMg" href="https://cdn.discordapp.com/attachments/1021731951708741644/1519047193527451770/demetraBackground2.png?ex=6a3c2271&is=6a3ad0f1&hm=cbef87e1f5a65935ac3b35240460db8eac15762e298a12a7a00d7a2409dc34f7&" width="1200" height="800"/>    
+          <image className="cloud2" href="https://assets.codepen.io/721952/cloud2.png" width="1200" height="800"/>    
+          <image className="cloud11" href="https://assets.codepen.io/721952/cloud1.png" width="1200" height="800"/>
+          <image className="cloud31" href="https://assets.codepen.io/721952/cloud3.png" width="1200" height="800"/>
+          
+          {/* Main Title adjusted with elegant Cinzel typography class */}
+          <text className="main-title" fill="#fff" x="50%" y="220" textAnchor="middle">DEMETRA</text>
+          <polyline className="arrow" fill="#fff" points="599,260 599,299 590,289 590,292 600,302 610,292 610,289 601,299 601,260" />
           
           <g mask="url(#m)">
             <rect fill="#fff" width="100%" height="100%" />      
-            <text x="350" y="200" fill="#162a43">School events</text>
+            <text className="main-title" x="50%" y="220" textAnchor="middle" fill="#162a43">School events</text>
           </g>
           
-          <rect ref={arrowRef} id="arrow-btn" width="100" height="100" opacity="0" x="550" y="220" />
+          <rect ref={arrowRef} id="arrow-btn" width="120" height="120" opacity="0" x="540" y="220" />
         </svg>
       </main>
     </div>
