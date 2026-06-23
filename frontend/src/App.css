@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap');
 
-/* --- Reset & Global Baseline --- */
+body{
+  overflow-x: hidden;
+}
+
 body, html {
   margin: 0;
   padding: 0;
@@ -11,7 +14,6 @@ body, html {
   color: #162a43;
 }
 
-/* --- Parallax Scroll Distance Tracker --- */
 .scrollDist {
   position: absolute;
   width: 100%;
@@ -20,7 +22,6 @@ body, html {
   pointer-events: none;
 }
 
-/* --- Shared Navigation Component --- */
 .nav-container {
   position: fixed;
   top: 0;
