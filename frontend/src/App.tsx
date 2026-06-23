@@ -1,21 +1,25 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import Navbar from './Navbar';
+import Register from './Register'; 
+import ClickSpark from './ClickSpark'; 
 import './app.css';
 
-// Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
 export default function App() {
+  const [currentView, setCurrentView] = useState<'home' | 'register'>('home');
+
   const containerRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<SVGRectElement>(null);
 
   useLayoutEffect(() => {
+    if (currentView !== 'home') return;
+
     const ctx = gsap.context(() => {
-      
-      // 1. Parallax Timeline
+      // Parallax Timeline
       gsap.timeline({
         scrollTrigger: {
           trigger: '.scrollDist',
@@ -32,7 +36,7 @@ export default function App() {
       .fromTo('.mountMg', { y: -30 }, { y: -250 }, 0)
       .fromTo('.mountFg', { y: -50 }, { y: -600 }, 0);
 
-      // 2. Button Interaction Animations
+      // Button Interaction Animations
       const btn = arrowRef.current;
       if (btn) {
         const onMouseEnter = () => {
@@ -58,54 +62,80 @@ export default function App() {
     }, containerRef);
 
     return () => ctx.revert();
-  }, []);
+  }, [currentView]);
 
   return (
-    <div 
-      ref={containerRef} 
-      className="app-container" 
-      style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh' }}
-    >
-      {/* Navigation overlay */}
-      <Navbar />
+    <ClickSpark sparkColor={currentView === 'home' ? "#ffffff" : "#e3cc9a"} sparkCount={10} sparkRadius={25} duration={500}>
+      <div 
+        ref={containerRef} 
+        className="app-container" 
+        style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh' }}
+      >
+        <Navbar onNavigate={(view) => setCurrentView(view)} currentView={currentView} />
 
-      <div className="scrollDist"></div>
-      
-      <main style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', maxWidth: 'none', transform: 'none' }}>
-        <svg 
-          viewBox="0 0 1200 800" 
-          xmlns="http://www.w3.org/2000/svg"
-          preserveAspectRatio="xMidYMid slice"
-          style={{ width: '100%', height: '100%' }}
-        >
-          <defs>
-            <mask id="m">
-              <g className="cloud1">
-                <rect fill="#fff" width="100%" height="801" y="799" />
-                <image href="https://assets.codepen.io/721952/cloud1Mask.jpg" width="1200" height="800"/>
-              </g>
-            </mask>
-          </defs>
-          
-          <image className="sky" href="https://assets.codepen.io/721952/sky.jpg" width="1200" height="590" />
-          
-          <image className="mountMg" href="https://cdn.discordapp.com/attachments/1021731951708741644/1519047193527451770/demetraBackground2.png?ex=6a3c2271&is=6a3ad0f1&hm=cbef87e1f5a65935ac3b35240460db8eac15762e298a12a7a00d7a2409dc34f7&" width="1200" height="800"/>    
-          <image className="cloud2" href="https://assets.codepen.io/721952/cloud2.png" width="1200" height="800"/>    
-          <image className="cloud11" href="https://assets.codepen.io/721952/cloud1.png" width="1200" height="800"/>
-          <image className="cloud31" href="https://assets.codepen.io/721952/cloud3.png" width="1200" height="800"/>
-          
-          {/* Main Title adjusted with elegant Cinzel typography class */}
-          <text className="main-title" fill="#fff" x="50%" y="220" textAnchor="middle">DEMETRA</text>
-          <polyline className="arrow" fill="#fff" points="599,260 599,299 590,289 590,292 600,302 610,292 610,289 601,299 601,260" />
-          
-          <g mask="url(#m)">
-            <rect fill="#fff" width="100%" height="100%" />      
-            <text className="main-title" x="50%" y="220" textAnchor="middle" fill="#162a43">School events</text>
-          </g>
-          
-          <rect ref={arrowRef} id="arrow-btn" width="120" height="120" opacity="0" x="540" y="220" />
-        </svg>
-      </main>
-    </div>
+        {currentView === 'home' ? (
+          <>
+            <div className="scrollDist"></div>
+            
+            <main style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', maxWidth: 'none', transform: 'none' }}>
+              <svg 
+                viewBox="0 0 1200 800" 
+                xmlns="http://www.w3.org/2000/svg"
+                preserveAspectRatio="xMidYMid slice"
+                style={{ width: '100%', height: '100%' }}
+              >
+                <defs>
+                  <mask id="m">
+                    <g className="cloud1">
+                      <rect fill="#fff" width="100%" height="801" y="799" />
+                      <image href="https://assets.codepen.io/721952/cloud1Mask.jpg" width="1200" height="800"/>
+                    </g>
+                  </mask>
+                </defs>
+                
+                <image className="sky" href="https://assets.codepen.io/721952/sky.jpg" width="1200" height="590" />
+                
+                <image className="mountMg" href="https://cdn.discordapp.com/attachments/1021731951708741644/1519047193527451770/demetraBackground2.png?ex=6a3c2271&is=6a3ad0f1&hm=cbef87e1f5a65935ac3b35240460db8eac15762e298a12a7a00d7a2409dc34f7&" width="1200" height="800"/>    
+                <image className="cloud2" href="https://assets.codepen.io/721952/cloud2.png" width="1200" height="800"/>    
+                <image className="cloud11" href="https://assets.codepen.io/721952/cloud1.png" width="1200" height="800"/>
+                <image className="cloud31" href="https://assets.codepen.io/721952/cloud3.png" width="1200" height="800"/>
+                
+                <text className="main-title" fill="#fff" x="50%" y="280" textAnchor="middle">DEMETRA</text>
+                
+                {/* REPLACED WITH A PERFECTLY CENTERED, CRISP SVG PATH ARROW */}
+                <path 
+                  className="arrow" 
+                  fill="none" 
+                  stroke="#fff" 
+                  strokeWidth="2.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  d="M600,320 L600,360 M592,352 L600,360 L608,352" 
+                />                
+                
+                <g mask="url(#m)">
+                  <rect fill="#fff" width="100%" height="100%" />      
+                  <text className="main-title" x="50%" y="220" textAnchor="middle" fill="#162a43">School events</text>
+                </g>
+                
+                {/* RE-ALIGNED HITBOX AREA TO PERFECTLY ENVELOPE THE NEW ARROW COORDS */}
+                <rect 
+                  ref={arrowRef} 
+                  id="arrow-btn" 
+                  width="50" 
+                  height="60" 
+                  opacity="0" 
+                  x="575" 
+                  y="310" 
+                  style={{ cursor: 'pointer' }} 
+                />
+              </svg>
+            </main>
+          </>
+        ) : (
+          <Register onBackToHome={() => setCurrentView('home')} />
+        )}
+      </div>
+    </ClickSpark>
   );
 }

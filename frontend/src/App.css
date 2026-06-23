@@ -1,92 +1,319 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap');
 
+/* --- Reset & Global Baseline --- */
 body, html {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  background: #111b29;
-  text-align: center;
-  overflow-x: hidden;
+  background-color: #fdfbf7;
+  font-family: 'Inter', sans-serif;
+  color: #162a43;
 }
 
-/* Base text setups */
-.main-title {
-  font-family: 'Cinzel', serif;
-  font-weight: 700;
-  font-size: 84px;
-  letter-spacing: 6px;
-}
-
+/* --- Parallax Scroll Distance Tracker --- */
 .scrollDist {
   position: absolute;
   width: 100%;
-  height: 200%;
+  height: 300%;
   z-index: 1;
+  pointer-events: none;
 }
 
-/* --- Clean Navigation Header Setup --- */
+/* --- Shared Navigation Component --- */
 .nav-container {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 24px 60px;
+  padding: 24px 40px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  z-index: 10; /* Ensures visibility above all parallax layers */
-  font-family: 'Inter', sans-serif;
+  z-index: 10;
+  background-color: transparent;
+  transition: all 0.4s ease;
+}
+
+.nav-left, .nav-right {
+  flex: 1;
+}
+
+.nav-right {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nav-center {
+  display: flex;
+  gap: 32px;
 }
 
 .nav-logo {
   font-family: 'Cinzel', serif;
-  font-weight: 900;
-  font-size: 24px;
-  letter-spacing: 3px;
-  color: #ffffff;
-}
-
-.nav-menu {
-  display: flex;
-  align-items: center;
-  gap: 36px;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: #ffffff; /* White by default to contrast against the dark parallax sky background */
+  transition: color 0.4s ease;
 }
 
 .nav-link {
   color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
-  letter-spacing: 0.5px;
-  transition: color 0.3s ease;
+  transition: color 0.2s ease;
 }
 
 .nav-link:hover {
   color: #ffffff;
 }
 
-/* Pill CTA Button style for 'Get Started' */
+/* White Pill "Get Started" Navigation Button */
 .nav-btn {
-  background: #ffffff;
-  color: #111b29;
-  text-decoration: none;
-  padding: 10px 24px;
-  border-radius: 30px;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  background-color: #ffffff !important;
+  color: #162a43 !important;
+  border: none !important;
+  padding: 10px 24px !important;
+  border-radius: 9999px !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+  transition: all 0.2s ease-in-out !important;
 }
 
 .nav-btn:hover {
-  background: #f0f0f0;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  background-color: #fdfbf7 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18) !important;
 }
 
-#arrow-btn {
+/* Scrolled Navbar or Register View Modifications */
+.nav-container.scrolled, 
+.app-container:has(.register-page-overlay) .nav-container {
+  background-color: rgba(253, 251, 247, 0.9);
+  backdrop-filter: blur(12px);
+  padding: 16px 40px;
+  border-bottom: 1px solid rgba(22, 42, 67, 0.06);
+}
+
+.nav-container.scrolled .nav-logo,
+.app-container:has(.register-page-overlay) .nav-container .nav-logo {
+  color: #162a43;
+}
+
+.nav-container.scrolled .nav-link,
+.app-container:has(.register-page-overlay) .nav-container .nav-link {
+  color: #435366;
+}
+
+.nav-container.scrolled .nav-link:hover,
+.app-container:has(.register-page-overlay) .nav-container .nav-link:hover {
+  color: #162a43;
+}
+
+.nav-container.scrolled .nav-btn,
+.app-container:has(.register-page-overlay) .nav-btn {
+  background-color: #162a43 !important;
+  color: #ffffff !important;
+}
+
+.nav-container.scrolled .nav-btn:hover,
+.app-container:has(.register-page-overlay) .nav-btn:hover {
+  background-color: #233d5e !important;
+}
+
+/* --- SVG Hero Typography Setup --- */
+svg text {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  letter-spacing: 12px;
+}
+
+.main-title {
+  font-size: 96px;
+}
+
+/* --- Classical Register Page Overlay Card Structure --- */
+.register-page-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #162a43; /* Rich dark container background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 120px 24px 40px 24px;
+  box-sizing: border-box;
+  z-index: 8;
+  overflow-y: auto;
+}
+
+.register-card {
+  width: 100%;
+  max-width: 440px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
+  animation: cardFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.register-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.register-title {
+  font-family: 'Cinzel', serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #162a43;
+  margin: 0 0 8px 0;
+  letter-spacing: 0.5px;
+}
+
+.register-subtitle {
+  font-size: 13px;
+  color: #5c6e85;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Dual-Role Grid Selectors Toggle Buttons */
+.role-toggle-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: rgba(22, 42, 67, 0.05);
+  padding: 4px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.role-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #5c6e85;
   cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.25s ease;
+}
+
+.role-toggle-btn.active {
+  background: #162a43;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(22, 42, 67, 0.15);
+}
+
+/* Individual Interactive Form Field Container Elements */
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.form-group label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #162a43;
+}
+
+.form-group input, .form-group select {
+  height: 44px;
+  width: 100%;
+  border: 1px solid rgba(22, 42, 67, 0.18);
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 0 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #162a43;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.form-group input:focus, .form-group select:focus {
+  border-color: #162a43;
+  box-shadow: 0 0 0 3px rgba(22, 42, 67, 0.08);
+}
+
+.form-group input::placeholder {
+  color: #a0aec0;
+}
+
+/* Action Submit Trigger */
+.register-submit-btn {
+  height: 46px;
+  background: #162a43;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 8px;
+}
+
+.register-submit-btn:hover {
+  background: #233d5e;
+}
+
+.register-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.back-home-link {
+  background: none;
+  border: none;
+  color: #5c6e85;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.back-home-link:hover {
+  text-decoration: underline;
+  color: #162a43;
 }
