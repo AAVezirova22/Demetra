@@ -123,13 +123,13 @@ body, html {
 
 .nav-container.scrolled .nav-btn,
 .app-container:has(.register-page-overlay) .nav-btn {
-  background-color: #162a43 !important;
+  background-color: #a79a0e !important;
   color: #ffffff !important;
 }
 
 .nav-container.scrolled .nav-btn:hover,
 .app-container:has(.register-page-overlay) .nav-btn:hover {
-  background-color: #233d5e !important;
+  background-color: rgb(136, 126, 12) !important;
 }
 
 /* --- SVG Hero Typography Setup --- */
@@ -150,7 +150,7 @@ svg text {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: #162a43; /* Rich dark container background */
+  background-color: rgb(167, 154, 14); /* Rich dark container background */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -233,7 +233,7 @@ svg text {
 }
 
 .role-toggle-btn.active {
-  background: #162a43;
+  background: rgb(167, 154, 14);
   color: #ffffff;
   box-shadow: 0 4px 12px rgba(22, 42, 67, 0.15);
 }
@@ -287,7 +287,7 @@ svg text {
 /* Action Submit Trigger */
 .register-submit-btn {
   height: 46px;
-  background: #162a43;
+  background: rgb(167, 154, 14);
   color: #ffffff;
   border: none;
   border-radius: 6px;
@@ -300,7 +300,7 @@ svg text {
 }
 
 .register-submit-btn:hover {
-  background: #233d5e;
+  background: rgb(136, 126, 12);
 }
 
 .register-footer {
