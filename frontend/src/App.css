@@ -19,6 +19,34 @@ body, html {
   color: #162a43;
 }
 
+::-webkit-scrollbar {
+  width: 10px;              
+  height: 10px;             
+}
+
+::-webkit-scrollbar-track {
+  background: #fdfbf7;       /* Matches your default page background */
+  border-left: 1px solid rgba(22, 42, 67, 0.04); /* Ultra-fine layout border */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(167, 154, 14, 0.3); /* Subtle presentation of your brand gold */
+  border-radius: 20px;       /* Smooth capsule rounding */
+  border: 2px solid #fdfbf7;  /* Creates a clean padding padding spacing offset channel around the thumb */
+  transition: background-color 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(167, 154, 14); /* Fills fully with your crisp brand color when actively engaged */
+}
+
+@supports (scrollbar-color: red blue) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: #a79a0e #fdfbf7;
+  }
+}
+
 /* Container holding the view */
 .page-transition-container {
   width: 100%;
