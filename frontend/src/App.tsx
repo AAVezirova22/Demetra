@@ -4,13 +4,15 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import Navbar from './Navbar';
 import Register from './Register'; 
+import Login from './Login'; // 1. Import your Login component here
 import ClickSpark from './ClickSpark'; 
 import './app.css';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'home' | 'register'>('home');
+  // 2. Add 'login' to the state type union
+  const [currentView, setCurrentView] = useState<'home' | 'register' | 'login'>('home');
 
   const containerRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<SVGRectElement>(null);
@@ -73,7 +75,7 @@ export default function App() {
       >
         <Navbar onNavigate={(view) => setCurrentView(view)} currentView={currentView} />
 
-        {currentView === 'home' ? (
+        {currentView === 'home' && (
           <>
             <div className="scrollDist"></div>
             
@@ -102,7 +104,6 @@ export default function App() {
                 
                 <text className="main-title" fill="#fff" x="50%" y="280" textAnchor="middle">DEMETRA</text>
                 
-                {/* REPLACED WITH A PERFECTLY CENTERED, CRISP SVG PATH ARROW */}
                 <path 
                   className="arrow" 
                   fill="none" 
@@ -118,7 +119,6 @@ export default function App() {
                   <text className="main-title" x="50%" y="220" textAnchor="middle" fill="#162a43">School events</text>
                 </g>
                 
-                {/* RE-ALIGNED HITBOX AREA TO PERFECTLY ENVELOPE THE NEW ARROW COORDS */}
                 <rect 
                   ref={arrowRef} 
                   id="arrow-btn" 
@@ -132,9 +132,24 @@ export default function App() {
               </svg>
             </main>
           </>
-        ) : (
-          <Register onBackToHome={() => setCurrentView('home')} />
         )}
+
+        {/* 3. Render Register component with the routing prop wired up */}
+        {/* Render Register component */}
+{currentView === 'register' && (
+  <Register 
+    onBackToHome={() => setCurrentView('home')} 
+    onNavigateToLogin={() => setCurrentView('login')} 
+  />
+)}
+
+{/* Render Login component */}
+{currentView === 'login' && (
+  <Login 
+    onBackToHome={() => setCurrentView('home')} 
+    onNavigateToRegister={() => setCurrentView('register')} // <-- Added this line to fix Error #3
+  />
+)}
       </div>
     </ClickSpark>
   );

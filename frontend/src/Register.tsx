@@ -13,9 +13,10 @@ const orgKinds = [
 
 interface RegisterProps {
   onBackToHome: () => void;
+  onNavigateToLogin: () => void;
 }
 
-export default function Register({ onBackToHome }: RegisterProps) {
+export default function Register({ onBackToHome, onNavigateToLogin }: RegisterProps) {
   const [role, setRole] = useState<'organizer' | 'student'>('organizer');
 
   // Fields State
@@ -25,14 +26,15 @@ export default function Register({ onBackToHome }: RegisterProps) {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (role === 'organizer') {
-      console.log('Registering Org:', { orgName, kind, organizerName, username, email });
+      console.log('Registering Org:', { orgName, kind, organizerName, username, email, password });
       alert('Welcome to Demetra. Your organization registration was captured.');
     } else {
-      console.log('Registering Student:', { name, username, email });
+      console.log('Registering Student:', { name, username, email, password });
       alert('Account created. Welcome to the recital hall.');
     }
   };
@@ -89,7 +91,7 @@ export default function Register({ onBackToHome }: RegisterProps) {
                     required
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
-                    placeholder="Orpheus Conservatory"
+                    placeholder="PGKPI"
                   />
                 </div>
 
@@ -114,7 +116,7 @@ export default function Register({ onBackToHome }: RegisterProps) {
                     required
                     value={organizerName}
                     onChange={(e) => setOrganizerName(e.target.value)}
-                    placeholder="Prof. Demetra Stavrou"
+                    placeholder="Prof. Antonov"
                   />
                 </div>
               </>
@@ -140,7 +142,7 @@ export default function Register({ onBackToHome }: RegisterProps) {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="lyra"
+                placeholder="Ivan"
               />
             </div>
 
@@ -148,11 +150,23 @@ export default function Register({ onBackToHome }: RegisterProps) {
               <label htmlFor="email">Email</label>
               <input
                 id="email"
-                type="type"
+                type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@school.edu"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
               />
             </div>
 
@@ -163,7 +177,11 @@ export default function Register({ onBackToHome }: RegisterProps) {
 
           <div className="register-footer">
             <span className="footer-text">Already have an account? </span>
-            <button type="button" className="signin-link">
+            <button 
+              type="button" 
+              className="signin-link" 
+              onClick={onNavigateToLogin}
+            >
               Sign in
             </button>
           </div>

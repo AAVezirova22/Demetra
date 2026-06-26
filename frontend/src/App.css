@@ -19,6 +19,24 @@ body, html {
   color: #162a43;
 }
 
+/* Container holding the view */
+.page-transition-container {
+  width: 100%;
+  height: 100%;
+  animation: pageFadeIn 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px); /* Subtle premium lift upward */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .scrollDist {
   position: absolute;
   width: 100%;
@@ -76,6 +94,8 @@ body, html {
   color: #ffffff;
 }
 
+
+
 /* White Pill "Get Started" Navigation Button */
 .nav-btn {
   background-color: #ffffff !important;
@@ -126,6 +146,8 @@ body, html {
   background-color: #a79a0e !important;
   color: #ffffff !important;
 }
+
+
 
 .nav-container.scrolled .nav-btn:hover,
 .app-container:has(.register-page-overlay) .nav-btn:hover {

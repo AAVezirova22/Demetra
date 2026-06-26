@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 
 interface NavbarProps {
-  onNavigate: (view: 'home' | 'register') => void;
-  currentView: 'home' | 'register';
+  currentView: 'home' | 'register' | 'login';
+  onNavigate: (view: 'home' | 'register' | 'login') => void;
 }
 
 export default function Navbar({ onNavigate, currentView }: NavbarProps) {
@@ -21,8 +21,11 @@ export default function Navbar({ onNavigate, currentView }: NavbarProps) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Check if we are currently inside any form view (register or login)
+  const isFormView = currentView === 'register' || currentView === 'login';
+
   return (
-    <nav className={`nav-container ${isScrolled || currentView === 'register' ? 'scrolled' : ''}`}>
+    <nav className={`nav-container ${isScrolled || isFormView ? 'scrolled' : ''}`}>
       {/* Left Zone */}
       <div className="nav-left">
         <div className="nav-logo" style={{ cursor: 'pointer' }} onClick={() => onNavigate('home')}>
@@ -39,7 +42,7 @@ export default function Navbar({ onNavigate, currentView }: NavbarProps) {
 
       {/* Right Zone */}
       <div className="nav-right">
-        {currentView !== 'register' ? (
+        {!isFormView ? (
           <button 
             type="button" 
             onClick={() => onNavigate('register')} 
