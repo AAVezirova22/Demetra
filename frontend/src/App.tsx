@@ -4,15 +4,16 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import Navbar from './Navbar';
 import Register from './Register'; 
-import Login from './Login'; // 1. Import your Login component here
+import Login from './Login'; 
 import ClickSpark from './ClickSpark'; 
+import Events from './Events'; // Import Events component
 import './app.css';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
 export default function App() {
   // 2. Add 'login' to the state type union
-  const [currentView, setCurrentView] = useState<'home' | 'register' | 'login'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'register' | 'login' | 'events'>('home');
 
   const containerRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<SVGRectElement>(null);
@@ -136,20 +137,26 @@ export default function App() {
 
         {/* 3. Render Register component with the routing prop wired up */}
         {/* Render Register component */}
-{currentView === 'register' && (
-  <Register 
-    onBackToHome={() => setCurrentView('home')} 
-    onNavigateToLogin={() => setCurrentView('login')} 
-  />
-)}
+        {currentView === 'register' && (
+          <Register 
+            onBackToHome={() => setCurrentView('home')} 
+            onNavigateToLogin={() => setCurrentView('login')} 
+          />
+        )}
 
-{/* Render Login component */}
-{currentView === 'login' && (
-  <Login 
-    onBackToHome={() => setCurrentView('home')} 
-    onNavigateToRegister={() => setCurrentView('register')} // <-- Added this line to fix Error #3
-  />
-)}
+        {/* Render Login component */}
+        {currentView === 'login' && (
+          <Login 
+            onBackToHome={() => setCurrentView('home')} 
+            onNavigateToRegister={() => setCurrentView('register')} // <-- Added this line to fix Error #3
+          />
+        )}
+
+        {currentView === 'events' && (
+          <Events 
+            onNavigate={(view) => setCurrentView(view)} // Pass onNavigate prop to Events
+          />
+        )}
       </div>
     </ClickSpark>
   );

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 interface NavbarProps {
   currentView: 'home' | 'register' | 'login';
-  onNavigate: (view: 'home' | 'register' | 'login') => void;
+  onNavigate: (view: 'home' | 'register' | 'login' | 'events') => void;
 }
 
 export default function Navbar({ onNavigate, currentView }: NavbarProps) {
@@ -35,7 +35,7 @@ export default function Navbar({ onNavigate, currentView }: NavbarProps) {
       
       {/* Center Zone */}
       <div className="nav-center">
-        <a href="#events" className="nav-link">Events</a>
+        <a href="#events" className="nav-link" onClick={() => onNavigate('events')}>Events</a>
         <a href="#instruments" className="nav-link">Instruments</a>
         <a href="#dashboard" className="nav-link">Dashboard</a>
       </div>
