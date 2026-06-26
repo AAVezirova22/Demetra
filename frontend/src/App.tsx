@@ -6,14 +6,16 @@ import Navbar from './Navbar';
 import Register from './Register'; 
 import Login from './Login'; 
 import ClickSpark from './ClickSpark'; 
-import Events from './Events'; // Import Events component
+import Events from './Events';
+import Dashboard from './Dashboard';
 import './app.css';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
+export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard';
+
 export default function App() {
-  // 2. Add 'login' to the state type union
-  const [currentView, setCurrentView] = useState<'home' | 'register' | 'login' | 'events'>('home');
+  const [currentView, setCurrentView] = useState<AppView>('home');
 
   const containerRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<SVGRectElement>(null);
@@ -22,7 +24,6 @@ export default function App() {
     if (currentView !== 'home') return;
 
     const ctx = gsap.context(() => {
-      // Parallax Timeline
       gsap.timeline({
         scrollTrigger: {
           trigger: '.scrollDist',
@@ -39,7 +40,6 @@ export default function App() {
       .fromTo('.mountMg', { y: -30 }, { y: -250 }, 0)
       .fromTo('.mountFg', { y: -50 }, { y: -600 }, 0);
 
-      // Button Interaction Animations
       const btn = arrowRef.current;
       if (btn) {
         const onMouseEnter = () => {
@@ -135,8 +135,6 @@ export default function App() {
           </>
         )}
 
-        {/* 3. Render Register component with the routing prop wired up */}
-        {/* Render Register component */}
         {currentView === 'register' && (
           <Register 
             onBackToHome={() => setCurrentView('home')} 
@@ -144,17 +142,22 @@ export default function App() {
           />
         )}
 
-        {/* Render Login component */}
         {currentView === 'login' && (
           <Login 
             onBackToHome={() => setCurrentView('home')} 
-            onNavigateToRegister={() => setCurrentView('register')} // <-- Added this line to fix Error #3
+            onNavigateToRegister={() => setCurrentView('register')}
           />
         )}
 
         {currentView === 'events' && (
           <Events 
-            onNavigate={(view) => setCurrentView(view)} // Pass onNavigate prop to Events
+            onNavigate={(view) => setCurrentView(view)}
+          />
+        )}
+
+        {currentView === 'dashboard' && (
+          <Dashboard 
+            onNavigate={(view) => setCurrentView(view)}
           />
         )}
       </div>

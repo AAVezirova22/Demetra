@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 
+type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard';
+
 interface NavbarProps {
-  currentView: 'home' | 'register' | 'login';
-  onNavigate: (view: 'home' | 'register' | 'login' | 'events') => void;
+  currentView: AppView;
+  onNavigate: (view: AppView) => void;
 }
 
 export default function Navbar({ onNavigate, currentView }: NavbarProps) {
@@ -10,50 +12,56 @@ export default function Navbar({ onNavigate, currentView }: NavbarProps) {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 80) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
+      setIsScrolled(window.scrollY > 80);
     };
-
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Check if we are currently inside any form view (register or login)
   const isFormView = currentView === 'register' || currentView === 'login';
 
   return (
     <nav className={`nav-container ${isScrolled || isFormView ? 'scrolled' : ''}`}>
-      {/* Left Zone */}
+      {/* Left */}
       <div className="nav-left">
         <div className="nav-logo" style={{ cursor: 'pointer' }} onClick={() => onNavigate('home')}>
           DEMETRA
         </div>
       </div>
-      
-      {/* Center Zone */}
+
+      {/* Center */}
       <div className="nav-center">
-        <a href="#events" className="nav-link" onClick={() => onNavigate('events')}>Events</a>
+        <a
+          href="#events"
+          className="nav-link"
+          onClick={(e) => { e.preventDefault(); onNavigate('events'); }}
+        >
+          Events
+        </a>
         <a href="#instruments" className="nav-link">Instruments</a>
-        <a href="#dashboard" className="nav-link">Dashboard</a>
+        <a
+          href="#dashboard"
+          className="nav-link"
+          onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}
+        >
+          Dashboard
+        </a>
       </div>
 
-      {/* Right Zone */}
+      {/* Right */}
       <div className="nav-right">
         {!isFormView ? (
-          <button 
-            type="button" 
-            onClick={() => onNavigate('register')} 
+          <button
+            type="button"
+            onClick={() => onNavigate('register')}
             className="nav-btn"
           >
             Get Started
           </button>
         ) : (
-          <button 
-            type="button" 
-            onClick={() => onNavigate('home')} 
+          <button
+            type="button"
+            onClick={() => onNavigate('home')}
             className="nav-btn"
           >
             Back Home
