@@ -8,11 +8,12 @@ import Login from './Login';
 import ClickSpark from './ClickSpark'; 
 import Events from './Events';
 import Dashboard from './Dashboard';
+import Instruments from './Instruments';
 import './app.css';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
-export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard';
+export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('home');
@@ -153,6 +154,10 @@ export default function App() {
           <Events 
             onNavigate={(view) => setCurrentView(view)}
           />
+        )}
+
+        {currentView === 'instruments' && (
+          <Instruments onNavigate={(view) => setCurrentView(view)} />
         )}
 
         {currentView === 'dashboard' && (

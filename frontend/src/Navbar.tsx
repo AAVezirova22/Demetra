@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard';
+type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments';
 
 interface NavbarProps {
   currentView: AppView;
@@ -38,7 +38,7 @@ export default function Navbar({ onNavigate, currentView }: NavbarProps) {
         >
           Events
         </a>
-        <a href="#instruments" className="nav-link">Instruments</a>
+        <a href="#instruments" className="nav-link" onClick={(e) => { e.preventDefault(); onNavigate('instruments'); }}>Instruments</a>
         <a
           href="#dashboard"
           className="nav-link"
