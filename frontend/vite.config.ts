@@ -7,5 +7,12 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: ['.ngrok-free.dev'],
+    proxy: {
+      '/api': 'http://localhost:3000',
+      '/socket.io': {
+        target: 'http://localhost:3000',
+        ws: true,
+      },
+    },
   },
 })

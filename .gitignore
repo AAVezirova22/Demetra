@@ -36,6 +36,7 @@ Thumbs.db
 # Prisma / DB
 *.db
 *.sqlite
+backend/src/generated/
 
 # Docker
 .docker/

@@ -1,18 +1,17 @@
-version: '3.8'
-
 services:
   db:
-    image: postgres:15-alpine
+    image: mysql:8.4
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: schoolevents
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: demetra
+      MYSQL_USER: demetra
+      MYSQL_PASSWORD: demetra_password
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mysqldata:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u demetra -pdemetra_password --silent"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -24,13 +23,16 @@ services:
 
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
+    command: sh -c "npm run prisma:push && npm start"
     environment:
       PORT: 3000
-      DATABASE_URL: postgresql://postgres:password@db:5432/schoolevents
+      DATABASE_URL: mysql://demetra:demetra_password@db:3306/demetra
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: supersecret
+      JWT_SECRET: change-this-local-secret-at-least-32-characters
+      CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080
+      CORS_ORIGIN_PATTERN: ^https://.*\\.ngrok-free\\.app$,^https://.*\\.ngrok-free\\.dev$
     ports:
       - "3000:3000"
     depends_on:
@@ -41,10 +43,10 @@ services:
 
   worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.worker
+      context: .
+      dockerfile: backend/Dockerfile.worker
     environment:
-      DATABASE_URL: postgresql://postgres:password@db:5432/schoolevents
+      DATABASE_URL: mysql://demetra:demetra_password@db:3306/demetra
       REDIS_URL: redis://redis:6379
     depends_on:
       db:
@@ -73,4 +75,4 @@ services:
       - frontend
 
 volumes:
-  pgdata:
+  mysqldata:

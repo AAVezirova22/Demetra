@@ -9,6 +9,7 @@ import ClickSpark from './ClickSpark';
 import Events from './Events';
 import Dashboard from './Dashboard';
 import Instruments from './Instruments';
+import { clearStoredAuth, getStoredAuth, type AuthUser } from './api';
 import './App.css';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
@@ -17,6 +18,7 @@ export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | '
 
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('home');
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => getStoredAuth()?.user ?? null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<SVGRectElement>(null);
@@ -68,6 +70,26 @@ export default function App() {
     return () => ctx.revert();
   }, [currentView]);
 
+  const handleNavigate = (view: AppView) => {
+    if (view === 'dashboard' && !currentUser) {
+      setCurrentView('login');
+      return;
+    }
+
+    setCurrentView(view);
+  };
+
+  const handleAuthenticated = (user: AuthUser) => {
+    setCurrentUser(user);
+    setCurrentView('dashboard');
+  };
+
+  const handleLogout = () => {
+    clearStoredAuth();
+    setCurrentUser(null);
+    setCurrentView('home');
+  };
+
   return (
     <ClickSpark sparkColor={currentView === 'home' ? "#ffffff" : "#e3cc9a"} sparkCount={10} sparkRadius={25} duration={500}>
       <div 
@@ -75,7 +97,12 @@ export default function App() {
         className="app-container" 
         style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh' }}
       >
-        <Navbar onNavigate={(view) => setCurrentView(view)} currentView={currentView} />
+        <Navbar
+          onNavigate={handleNavigate}
+          currentView={currentView}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+        />
 
         {currentView === 'home' && (
           <>
@@ -140,6 +167,7 @@ export default function App() {
           <Register 
             onBackToHome={() => setCurrentView('home')} 
             onNavigateToLogin={() => setCurrentView('login')} 
+            onAuthenticated={handleAuthenticated}
           />
         )}
 
@@ -147,6 +175,7 @@ export default function App() {
           <Login 
             onBackToHome={() => setCurrentView('home')} 
             onNavigateToRegister={() => setCurrentView('register')}
+            onAuthenticated={handleAuthenticated}
           />
         )}
 
