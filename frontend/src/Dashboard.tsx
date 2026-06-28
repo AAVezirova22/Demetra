@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import type { AuthUser } from './api';
 
 interface DashboardProps {
   onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments') => void;
+  currentUser: AuthUser | null;
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -10,7 +12,24 @@ interface Seat { id: string; row: number; col: number; status: SeatStatus; }
 interface StageLayout { id: string; name: string; venue: string; rows: number; cols: number; seats: Seat[]; stageShape: 'rect' | 'arc' | 'thrust'; createdAt: string; }
 
 // ── Mock Data ────────────────────────────────────────────────────────────────
-const ORG = { name: 'National Music Academy', type: 'Music School', admin: 'Prof. Antonov', username: 'nma_sofia', email: 'admin@nma.bg', city: 'Sofia, Bulgaria', students: 47, events: 3, initials: 'NMA' };
+function titleCaseEnum(value: string | undefined) {
+  if (!value) return 'Organization';
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function initials(name: string) {
+  const letters = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+  return letters || 'ORG';
+}
 
 const MOCK_ORG_EVENTS = [
   { id: 1, title: 'Spring Symphony Concert', date: 'Jul 12, 2026', registered: 289, capacity: 320, status: 'open', category: 'Concert', color: '#4f8ef7' },
@@ -464,7 +483,7 @@ function InviteModal({ onClose }: { onClose: () => void }) {
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
-export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
+export default function Dashboard({ onNavigate: _onNavigate, currentUser }: DashboardProps) {
   const [section, setSection] = useState<'overview' | 'events' | 'students' | 'stages' | 'settings'>('overview');
   const [showInvite, setShowInvite] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -503,6 +522,14 @@ export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
     s.instrument.toLowerCase().includes(studentSearch.toLowerCase())
   );
 
+  if (!currentUser || currentUser.role !== 'ORGANIZER') {
+    return null;
+  }
+
+  const organizationName = currentUser.organization?.name ?? 'Your organization';
+  const organizationType = titleCaseEnum(currentUser.organization?.kind);
+  const organizationInitials = initials(organizationName);
+
   return (
     <>
       {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
@@ -513,11 +540,11 @@ export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
         {/* ── Sidebar ── */}
         <aside className={`dash-sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
           <div className="dash-org-card">
-            <div className="dash-org-avatar">NMA</div>
+            <div className="dash-org-avatar">{organizationInitials}</div>
             {sidebarOpen && (
               <>
-                <div className="dash-org-name">National Music Academy</div>
-                <div className="dash-org-type">Music School · Sofia, Bulgaria</div>
+                <div className="dash-org-name">{organizationName}</div>
+                <div className="dash-org-type">{organizationType}</div>
               </>
             )}
           </div>
@@ -554,7 +581,7 @@ export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
               <div className="dash-page-header">
                 <div>
                   <div className="dash-breadcrumb">Dashboard · Overview</div>
-                  <h1 className="dash-page-title">Welcome back, Antonov</h1>
+                  <h1 className="dash-page-title">Welcome back, {currentUser.name}</h1>
                 </div>
                 <button className="dash-create-btn" onClick={() => setShowCreate(true)}>+ New Event</button>
               </div>
@@ -564,7 +591,7 @@ export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
                 {[
                   { icon: '🎓', value: 47, label: 'Students', sub: '3 pending invites', color: '#4f8ef7', bg: 'rgba(79,142,247,0.08)' },
                   { icon: '🎼', value: 3, label: 'Active Events', sub: '1 fully booked', color: '#e8aa2e', bg: 'rgba(232,170,46,0.08)' },
-                  { icon: '🏛️', value: 1921, label: 'Founded', sub: 'Sofia, Bulgaria', color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
+                  { icon: '🏛️', value: 1, label: 'Organization', sub: organizationType, color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
                   { icon: '✉️', value: 3, label: 'Open Invites', sub: '2 email · 1 link', color: '#48bb78', bg: 'rgba(72,187,120,0.08)' },
                 ].map(s => (
                   <div key={s.label} className="dash-stat-card" style={{ '--stat-color': s.color, '--stat-bg': s.bg } as any}>
@@ -785,17 +812,15 @@ export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
                 <div className="dash-content-card">
                   <h2 className="dash-section-title" style={{ marginBottom: 16 }}>Organisation Profile</h2>
                   <div className="dash-settings-form">
-                    <div className="form-group"><label>Organisation Name</label><input type="text" defaultValue={ORG.name} /></div>
-                    <div className="form-group"><label>Type</label><select defaultValue={ORG.type}><option>Music School</option><option>Music Club</option><option>Conservatory</option><option>Private Studio</option></select></div>
-                    <div className="form-group"><label>City</label><input type="text" defaultValue={ORG.city} /></div>
+                    <div className="form-group"><label>Organisation Name</label><input type="text" defaultValue={organizationName} /></div>
+                    <div className="form-group"><label>Type</label><input type="text" defaultValue={organizationType} /></div>
                   </div>
                 </div>
                 <div className="dash-content-card">
                   <h2 className="dash-section-title" style={{ marginBottom: 16 }}>Admin Account</h2>
                   <div className="dash-settings-form">
-                    <div className="form-group"><label>Your Name</label><input type="text" defaultValue={ORG.admin} /></div>
-                    <div className="form-group"><label>Username</label><input type="text" defaultValue={ORG.username} /></div>
-                    <div className="form-group"><label>Email</label><input type="email" defaultValue={ORG.email} /></div>
+                    <div className="form-group"><label>Your Name</label><input type="text" defaultValue={currentUser.name} /></div>
+                    <div className="form-group"><label>Email</label><input type="email" defaultValue={currentUser.email} /></div>
                   </div>
                   <div style={{ marginTop: 16 }}><button className="dash-create-btn">Save changes</button></div>
                 </div>
@@ -807,3 +832,4 @@ export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
     </>
   );
 }
+

@@ -5,6 +5,11 @@ export type AuthUser = {
   email: string;
   name: string;
   role: AuthRole;
+  organization: {
+    id: string;
+    name: string;
+    kind: string;
+  } | null;
 };
 
 type AuthResponse = {
@@ -75,5 +80,13 @@ export async function loginUser(input: { email: string; password: string }) {
   return apiRequest<AuthResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(input),
+  });
+}
+
+export async function fetchCurrentUser(token: string) {
+  return apiRequest<{ user: AuthUser }>('/auth/me', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 }

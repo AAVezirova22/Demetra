@@ -264,12 +264,20 @@ function requireRole(role: Role) {
   };
 }
 
-function publicUser(user: { id: string; email: string; name: string; role: Role; createdAt?: Date }) {
+function publicUser(user: {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  createdAt?: Date;
+  organization?: { id: string; name: string; kind: OrganizationKind } | null;
+}) {
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     role: user.role,
+    organization: user.organization ?? null,
     createdAt: user.createdAt,
   };
 }
@@ -304,7 +312,10 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
         });
       }
 
-      return createdUser;
+      return tx.user.findUniqueOrThrow({
+        where: { id: createdUser.id },
+        include: { organization: { select: { id: true, name: true, kind: true } } },
+      });
     });
 
     res.status(201).json({ token: signToken(user), user: publicUser(user) });
@@ -322,7 +333,10 @@ app.post('/api/auth/login', authRateLimit, async (req, res) => {
   if ('error' in input) return res.status(400).json({ error: input.error });
 
   try {
-    const user = await prisma.user.findUnique({ where: { email: input.email } });
+    const user = await prisma.user.findUnique({
+      where: { email: input.email },
+      include: { organization: { select: { id: true, name: true, kind: true } } },
+    });
     if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
@@ -337,11 +351,11 @@ app.post('/api/auth/login', authRateLimit, async (req, res) => {
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.sub },
-    select: { id: true, email: true, name: true, role: true, createdAt: true },
+    include: { organization: { select: { id: true, name: true, kind: true } } },
   });
 
   if (!user) return res.status(401).json({ error: 'Authentication required.' });
-  res.json({ user });
+  res.json({ user: publicUser(user) });
 });
 
 // Event Registration Endpoint (Concurrency Safe)

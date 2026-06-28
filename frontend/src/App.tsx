@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
@@ -9,7 +9,7 @@ import ClickSpark from './ClickSpark';
 import Events from './Events';
 import Dashboard from './Dashboard';
 import Instruments from './Instruments';
-import { clearStoredAuth, getStoredAuth, type AuthUser } from './api';
+import { clearStoredAuth, fetchCurrentUser, getStoredAuth, storeAuth, type AuthUser } from './api';
 import './App.css';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
@@ -70,9 +70,28 @@ export default function App() {
     return () => ctx.revert();
   }, [currentView]);
 
+  useEffect(() => {
+    const auth = getStoredAuth();
+    if (!auth) return;
+
+    fetchCurrentUser(auth.token)
+      .then(({ user }) => {
+        setCurrentUser(user);
+        storeAuth({ token: auth.token, user });
+      })
+      .catch(() => {
+        clearStoredAuth();
+        setCurrentUser(null);
+      });
+  }, []);
+
   const handleNavigate = (view: AppView) => {
     if (view === 'dashboard' && !currentUser) {
       setCurrentView('login');
+      return;
+    }
+    if (view === 'dashboard' && currentUser?.role !== 'ORGANIZER') {
+      setCurrentView('events');
       return;
     }
 
@@ -81,7 +100,7 @@ export default function App() {
 
   const handleAuthenticated = (user: AuthUser) => {
     setCurrentUser(user);
-    setCurrentView('dashboard');
+    setCurrentView(user.role === 'ORGANIZER' ? 'dashboard' : 'events');
   };
 
   const handleLogout = () => {
@@ -192,6 +211,7 @@ export default function App() {
         {currentView === 'dashboard' && (
           <Dashboard 
             onNavigate={(view) => setCurrentView(view)}
+            currentUser={currentUser}
           />
         )}
       </div>

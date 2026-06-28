@@ -42,13 +42,15 @@ export default function Navbar({ onNavigate, currentView, currentUser, onLogout 
           Events
         </a>
         <a href="#instruments" className="nav-link" onClick={(e) => { e.preventDefault(); onNavigate('instruments'); }}>Instruments</a>
-        <a
-          href="#dashboard"
-          className="nav-link"
-          onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}
-        >
-          Dashboard
-        </a>
+        {currentUser?.role === 'ORGANIZER' && (
+          <a
+            href="#dashboard"
+            className="nav-link"
+            onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}
+          >
+            Dashboard
+          </a>
+        )}
       </div>
 
       {/* Right */}
