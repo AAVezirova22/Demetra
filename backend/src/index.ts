@@ -5,7 +5,7 @@ import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
 import cors from 'cors';
 import crypto from 'crypto';
-import { OrganizationKind, PrismaClient, Role } from '@prisma/client';
+import { EventStatus, OrganizationKind, PrismaClient, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const app = express();
@@ -264,6 +264,33 @@ function requireRole(role: Role) {
   };
 }
 
+function parseEventInput(body: any) {
+  const title = typeof body.title === 'string' ? body.title.trim().replace(/\s+/g, ' ') : '';
+  const description = typeof body.description === 'string' ? body.description.trim() : '';
+  const category = typeof body.category === 'string' ? body.category.trim().replace(/\s+/g, ' ') : '';
+  const location = typeof body.location === 'string' ? body.location.trim().replace(/\s+/g, ' ') : '';
+  const capacity = Number(body.capacity);
+  const startsAt = typeof body.startsAt === 'string' && body.startsAt.trim()
+    ? new Date(body.startsAt)
+    : null;
+
+  if (title.length < 2 || title.length > 160) return { error: 'Event title must be between 2 and 160 characters.' };
+  if (description.length > 5000) return { error: 'Description must be 5000 characters or less.' };
+  if (category.length > 80) return { error: 'Category must be 80 characters or less.' };
+  if (location.length > 180) return { error: 'Location must be 180 characters or less.' };
+  if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100000) return { error: 'Capacity must be between 1 and 100000.' };
+  if (startsAt && Number.isNaN(startsAt.getTime())) return { error: 'Event date is invalid.' };
+
+  return {
+    title,
+    description: description || null,
+    category: category || null,
+    location: location || null,
+    capacity,
+    startsAt,
+  };
+}
+
 function publicUser(user: {
   id: string;
   email: string;
@@ -356,6 +383,87 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
 
   if (!user) return res.status(401).json({ error: 'Authentication required.' });
   res.json({ user: publicUser(user) });
+});
+
+app.get('/api/events', async (_, res) => {
+  const events = await prisma.event.findMany({
+    where: { status: EventStatus.PUBLISHED },
+    include: {
+      organizer: { select: { id: true, name: true } },
+      organization: { select: { id: true, name: true, kind: true } },
+      _count: { select: { registrations: { where: { status: 'CONFIRMED' } } } },
+    },
+    orderBy: [{ startsAt: 'asc' }, { createdAt: 'desc' }],
+  });
+
+  res.json({
+    events: events.map(({ _count, ...event }) => ({
+      ...event,
+      registered: _count.registrations,
+    })),
+  });
+});
+
+app.get('/api/events/my', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const events = await prisma.event.findMany({
+    where: { organizerId: req.user!.sub },
+    include: {
+      organization: { select: { id: true, name: true, kind: true } },
+      _count: { select: { registrations: { where: { status: 'CONFIRMED' } } } },
+    },
+    orderBy: [{ startsAt: 'asc' }, { createdAt: 'desc' }],
+  });
+
+  res.json({
+    events: events.map(({ _count, ...event }) => ({
+      ...event,
+      registered: _count.registrations,
+    })),
+  });
+});
+
+app.post('/api/events', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const input = parseEventInput(req.body);
+  if ('error' in input) return res.status(400).json({ error: input.error });
+
+  try {
+    const organization = await prisma.organization.findUnique({
+      where: { ownerId: req.user!.sub },
+      select: { id: true },
+    });
+
+    const event = await prisma.$transaction(async (tx) => {
+      const created = await tx.event.create({
+        data: {
+          title: input.title,
+          description: input.description,
+          category: input.category,
+          startsAt: input.startsAt,
+          location: input.location,
+          capacity: input.capacity,
+          status: EventStatus.PUBLISHED,
+          organizerId: req.user!.sub,
+          organizationId: organization?.id ?? null,
+        },
+      });
+
+      await tx.outboxEvent.create({
+        data: {
+          aggregateType: 'Event',
+          aggregateId: created.id,
+          eventType: 'EventPublished',
+          payload: { eventId: created.id, organizerId: req.user!.sub },
+        },
+      });
+
+      return created;
+    });
+
+    res.status(201).json({ event: { ...event, registered: 0 } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // Event Registration Endpoint (Concurrency Safe)

@@ -15,9 +15,17 @@ import './App.css';
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
 export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments';
+const VIEW_KEY = 'demetra.currentView';
+
+function getStoredView(): AppView {
+  const value = localStorage.getItem(VIEW_KEY);
+  return value === 'home' || value === 'register' || value === 'login' || value === 'events' || value === 'dashboard' || value === 'instruments'
+    ? value
+    : 'home';
+}
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<AppView>('home');
+  const [currentView, setCurrentView] = useState<AppView>(() => getStoredView());
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => getStoredAuth()?.user ?? null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -72,18 +80,29 @@ export default function App() {
 
   useEffect(() => {
     const auth = getStoredAuth();
-    if (!auth) return;
+    if (!auth) {
+      if (currentView === 'dashboard') setCurrentView('login');
+      return;
+    }
 
     fetchCurrentUser(auth.token)
       .then(({ user }) => {
         setCurrentUser(user);
         storeAuth({ token: auth.token, user });
+        if (currentView === 'dashboard' && user.role !== 'ORGANIZER') {
+          setCurrentView('events');
+        }
       })
       .catch(() => {
         clearStoredAuth();
         setCurrentUser(null);
+        if (currentView === 'dashboard') setCurrentView('login');
       });
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(VIEW_KEY, currentView);
+  }, [currentView]);
 
   const handleNavigate = (view: AppView) => {
     if (view === 'dashboard' && !currentUser) {

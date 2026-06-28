@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
-import type { AuthUser } from './api';
+﻿import { useState, useEffect } from 'react';
+import { createEvent, getStoredAuth, listMyEvents, type AuthUser, type EventRecord } from './api';
 
 interface DashboardProps {
   onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments') => void;
   currentUser: AuthUser | null;
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// в”Ђв”Ђ Types в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 type SeatStatus = 'available' | 'taken' | 'selected' | 'vip' | 'blocked';
 interface Seat { id: string; row: number; col: number; status: SeatStatus; }
 interface StageLayout { id: string; name: string; venue: string; rows: number; cols: number; seats: Seat[]; stageShape: 'rect' | 'arc' | 'thrust'; createdAt: string; }
 
-// ── Mock Data ────────────────────────────────────────────────────────────────
+// в”Ђв”Ђ Mock Data в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 function titleCaseEnum(value: string | undefined) {
   if (!value) return 'Organization';
   return value
@@ -31,11 +31,7 @@ function initials(name: string) {
   return letters || 'ORG';
 }
 
-const MOCK_ORG_EVENTS = [
-  { id: 1, title: 'Spring Symphony Concert', date: 'Jul 12, 2026', registered: 289, capacity: 320, status: 'open', category: 'Concert', color: '#4f8ef7' },
-  { id: 2, title: 'Student Recital Night', date: 'Jun 14, 2026', registered: 200, capacity: 200, status: 'past', category: 'Recital', color: '#a0aec0' },
-  { id: 3, title: 'Piano Masterclass: Chopin', date: 'Jul 24, 2026', registered: 40, capacity: 40, status: 'full', category: 'Masterclass', color: '#e05c5c' },
-];
+const EVENT_COLORS = ['#4f8ef7', '#7c6df0', '#38b2ac', '#e8aa2e', '#e05c5c', '#48bb78'];
 
 const MOCK_STUDENTS = [
   { id: 1, name: 'Anna Kostadinova', instrument: 'Violin', year: 3, email: 'anna.k@students.nma.bg', status: 'active', color: '#4f8ef7' },
@@ -72,7 +68,31 @@ function buildSeats(rows: number, cols: number): Seat[] {
   ).flat();
 }
 
-// ── Animated Counter ─────────────────────────────────────────────────────────
+function formatEventDate(value: string | null) {
+  if (!value) return 'Date TBA';
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
+}
+
+function mapDashboardEvent(event: EventRecord, index: number) {
+  const registered = event.registered ?? 0;
+  const capacity = Math.max(event.capacity, 1);
+  const startsAt = event.startsAt ? new Date(event.startsAt) : null;
+  const isPast = startsAt ? startsAt.getTime() < Date.now() : false;
+  const isFull = registered >= capacity;
+
+  return {
+    id: event.id,
+    title: event.title,
+    date: formatEventDate(event.startsAt),
+    registered,
+    capacity,
+    status: isPast ? 'past' : isFull ? 'full' : 'open',
+    category: event.category ?? 'Event',
+    color: EVENT_COLORS[index % EVENT_COLORS.length]!,
+  };
+}
+
+// в”Ђв”Ђ Animated Counter в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 function AnimatedNumber({ value, duration = 800 }: { value: number; duration?: number }) {
   const [display, setDisplay] = useState(0);
   useEffect(() => {
@@ -88,7 +108,7 @@ function AnimatedNumber({ value, duration = 800 }: { value: number; duration?: n
   return <>{display}</>;
 }
 
-// ── Interactive Seat Map ──────────────────────────────────────────────────────
+// в”Ђв”Ђ Interactive Seat Map в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 function SeatMap({ layout, editable = false, onUpdate }: {
   layout: StageLayout;
   editable?: boolean;
@@ -196,7 +216,7 @@ function SeatMap({ layout, editable = false, onUpdate }: {
                 fill={colors.fill} stroke={colors.stroke} strokeWidth={0.8}
                 style={{ cursor: editable ? 'crosshair' : 'default', transition: 'fill 0.1s ease' }}
                 onMouseEnter={(e) => {
-                  setTooltip({ x: e.clientX, y: e.clientY, text: `Row ${String.fromCharCode(65 + seat.row)}, Seat ${seat.col + 1} · ${seat.status}` });
+                  setTooltip({ x: e.clientX, y: e.clientY, text: `Row ${String.fromCharCode(65 + seat.row)}, Seat ${seat.col + 1} В· ${seat.status}` });
                   if (isPainting && editable) toggleSeat(seat.id);
                 }}
                 onMouseLeave={() => setTooltip(null)}
@@ -235,7 +255,7 @@ function SeatMap({ layout, editable = false, onUpdate }: {
   );
 }
 
-// ── Stage Layout Builder Modal ────────────────────────────────────────────────
+// в”Ђв”Ђ Stage Layout Builder Modal в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 function StageBuilderModal({ onClose, onSave, existing }: {
   onClose: () => void;
   onSave: (layout: StageLayout) => void;
@@ -266,7 +286,7 @@ function StageBuilderModal({ onClose, onSave, existing }: {
       <div className="modal-panel modal-panel--xl" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">{existing ? 'Edit Layout' : 'Create Stage Layout'}</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}>вњ•</button>
         </div>
 
         <div className="builder-grid">
@@ -309,7 +329,7 @@ function StageBuilderModal({ onClose, onSave, existing }: {
           </div>
 
           <div className="builder-preview">
-            <div className="builder-preview-label">Live Preview — paint seat types</div>
+            <div className="builder-preview-label">Live Preview вЂ” paint seat types</div>
             <SeatMap
               layout={{ id: 'preview', name, venue, rows, cols, seats, stageShape: shape, createdAt: '' }}
               editable
@@ -329,115 +349,132 @@ function StageBuilderModal({ onClose, onSave, existing }: {
   );
 }
 
-// ── Create Event Modal ────────────────────────────────────────────────────────
-function CreateEventModal({ layouts, onClose }: { layouts: StageLayout[]; onClose: () => void }) {
+// в”Ђв”Ђ Create Event Modal в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+function CreateEventModal({ layouts, initialLayout, onClose, onCreated }: {
+  layouts: StageLayout[];
+  initialLayout: StageLayout | null;
+  onClose: () => void;
+  onCreated: (event: EventRecord) => void;
+}) {
   const [step, setStep] = useState(1);
-  const [selectedLayout, setSelectedLayout] = useState<StageLayout | null>(null);
-  const [capacity, setCapacity] = useState(120);
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('Concert');
+  const [description, setDescription] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [location, setLocation] = useState(initialLayout?.venue ?? '');
+  const [selectedLayout, setSelectedLayout] = useState<StageLayout | null>(initialLayout);
+  const [capacity, setCapacity] = useState(initialLayout ? initialLayout.seats.filter(seat => seat.status !== 'blocked').length : 120);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    const auth = getStoredAuth();
+    if (!auth) {
+      setError('Log in as an organiser to create events.');
+      return;
+    }
+    if (!title.trim()) {
+      setError('Event title is required.');
+      setStep(1);
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    try {
+      const startsAt = date ? new Date(`${date}T${time || '00:00'}`).toISOString() : undefined;
+      const { event } = await createEvent(auth.token, {
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        startsAt,
+        location: location.trim(),
+        capacity,
+      });
+      onCreated(event);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create event.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const canPublish = title.trim().length >= 2 && capacity > 0;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-panel modal-panel--xl" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">Create New Event</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}>x</button>
         </div>
 
         <div className="create-steps">
           {['Details', 'Venue & Seats', 'Publish'].map((s, i) => (
-            <div key={s} className={`create-step ${step >= i + 1 ? 'active' : ''}`} onClick={() => step > i + 1 && setStep(i + 1)}>
+            <button key={s} type="button" className={`create-step ${step >= i + 1 ? 'active' : ''}`} onClick={() => setStep(i + 1)}>
               <div className="create-step-num">{i + 1}</div>
               <div className="create-step-label">{s}</div>
-            </div>
+            </button>
           ))}
         </div>
 
         {step === 1 && (
           <div className="create-form">
-            <div className="form-group"><label>Event Title</label><input type="text" placeholder="e.g. Spring Chamber Concert" /></div>
+            <div className="form-group"><label>Event Title</label><input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Spring Chamber Concert" /></div>
             <div className="create-form-row">
-              <div className="form-group"><label>Category</label><select><option>Concert</option><option>Masterclass</option><option>Workshop</option><option>Lecture</option><option>Recital</option></select></div>
-              <div className="form-group"><label>Admission</label><input type="text" placeholder="€12 or Free" /></div>
+              <div className="form-group"><label>Category</label><select value={category} onChange={e => setCategory(e.target.value)}><option>Concert</option><option>Masterclass</option><option>Workshop</option><option>Lecture</option><option>Recital</option></select></div>
+              <div className="form-group"><label>Date</label><input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
+              <div className="form-group"><label>Time</label><input type="time" value={time} onChange={e => setTime(e.target.value)} /></div>
             </div>
-            <div className="create-form-row">
-              <div className="form-group"><label>Date</label><input type="date" /></div>
-              <div className="form-group"><label>Start time</label><input type="time" /></div>
-            </div>
-            <div className="form-group"><label>Description</label><textarea placeholder="Describe the event…" rows={3} className="modal-textarea" /></div>
+            <div className="form-group"><label>Description</label><textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the programme, performers, and audience information." rows={4} /></div>
           </div>
         )}
 
         {step === 2 && (
-          <div className="create-form">
-            <div className="layout-picker-label">Choose a saved layout or set capacity manually</div>
-            <div className="layout-picker-grid">
+          <div className="create-venue-step">
+            <div className="form-group"><label>Location</label><input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Main Concert Hall" /></div>
+            <div className="form-group"><label>Capacity</label><input type="number" min={1} max={100000} value={capacity} onChange={e => setCapacity(Math.max(1, Number(e.target.value) || 1))} /></div>
+            <div className="layout-selection-grid">
               {layouts.map(l => (
-                <div key={l.id}
-                  className={`layout-picker-card ${selectedLayout?.id === l.id ? 'selected' : ''}`}
-                  onClick={() => { setSelectedLayout(l); setCapacity(l.rows * l.cols); }}
-                >
-                  <div className="layout-picker-name">{l.name}</div>
-                  <div className="layout-picker-meta">{l.venue} · {l.rows * l.cols} seats</div>
-                  <svg viewBox="0 0 80 50" width="80" height="50" style={{ marginTop: 8 }}>
-                    {l.stageShape === 'arc' && <ellipse cx={40} cy={12} rx={28} ry={10} fill="rgba(167,154,14,0.15)" stroke="rgb(167,154,14)" strokeWidth={1} />}
-                    {l.stageShape === 'rect' && <rect x={14} y={4} width={52} height={16} rx={2} fill="rgba(167,154,14,0.15)" stroke="rgb(167,154,14)" strokeWidth={1} />}
-                    {l.stageShape === 'thrust' && <polygon points="20,22 60,22 52,4 28,4" fill="rgba(167,154,14,0.15)" stroke="rgb(167,154,14)" strokeWidth={1} />}
-                    {Array.from({ length: Math.min(l.rows, 4) }, (_, r) =>
-                      Array.from({ length: Math.min(l.cols, 10) }, (_, c) => (
-                        <rect key={`${r}-${c}`} x={10 + c * 6} y={26 + r * 6} width={4} height={4} rx={1}
-                          fill="rgba(22,42,67,0.12)" stroke="rgba(22,42,67,0.2)" strokeWidth={0.5} />
-                      ))
-                    )}
-                  </svg>
-                </div>
+                <button key={l.id} type="button" className={`layout-select-card ${selectedLayout?.id === l.id ? 'selected' : ''}`} onClick={() => { setSelectedLayout(l); setLocation(l.venue); setCapacity(l.seats.filter(seat => seat.status !== 'blocked').length); }}>
+                  <div className="layout-select-name">{l.name}</div>
+                  <div className="layout-select-meta">{l.venue} · {l.seats.filter(seat => seat.status !== 'blocked').length} usable seats</div>
+                  <SeatMap layout={l} editable={false} />
+                </button>
               ))}
-              <div className={`layout-picker-card ${!selectedLayout ? 'selected' : ''}`} onClick={() => setSelectedLayout(null)}>
-                <div className="layout-picker-name">Manual capacity</div>
-                <div className="layout-picker-meta">Set a number, no visual map</div>
-                <div style={{ fontSize: 28, fontFamily: 'Cinzel, serif', fontWeight: 700, color: 'rgb(167,154,14)', marginTop: 8 }}>{capacity}</div>
-              </div>
             </div>
-
-            {selectedLayout ? (
-              <div style={{ marginTop: 16 }}>
-                <div className="builder-preview-label">Seat map preview</div>
-                <SeatMap layout={selectedLayout} editable={false} />
-              </div>
-            ) : (
-              <div className="form-group" style={{ marginTop: 16 }}>
-                <label>Capacity: <b>{capacity}</b></label>
-                <input type="range" min={10} max={500} step={5} value={capacity}
-                  onChange={e => setCapacity(+e.target.value)} className="range-slider" />
-              </div>
-            )}
           </div>
         )}
 
         {step === 3 && (
-          <div className="create-form">
-            <div className="form-group"><label>Registration deadline</label><input type="date" /></div>
-            <div className="form-group"><label>Waitlist</label><select><option>Enabled (auto-notify on cancellations)</option><option>Disabled</option></select></div>
-            <div className="form-group"><label>Visibility</label><select><option>Public – visible to all Demetra users</option><option>Organisation only – invite-only</option></select></div>
-            <div className="publish-summary">
-              <div className="publish-row"><span>Venue layout</span><span>{selectedLayout?.name ?? 'Manual capacity'}</span></div>
-              <div className="publish-row"><span>Capacity</span><span>{capacity} seats</span></div>
+          <div className="publish-preview">
+            <div className="preview-card">
+              <div className="preview-category">{category}</div>
+              <h4>{title || 'Untitled event'}</h4>
+              <p>{description || 'No description yet.'}</p>
+              <div className="preview-meta">{date || 'Date TBA'} {time ? `· ${time}` : ''}</div>
+              <div className="preview-meta">{location || 'Location TBA'} · {capacity} seats</div>
             </div>
           </div>
         )}
 
+        {error && <div className="auth-error" style={{ marginTop: 12 }}>{error}</div>}
+
         <div className="modal-footer">
-          {step > 1 && <button className="modal-btn-secondary" onClick={() => setStep(s => s - 1)}>Back</button>}
-          {step < 3
-            ? <button className="modal-btn-primary" onClick={() => setStep(s => s + 1)}>Continue</button>
-            : <button className="modal-btn-primary" onClick={onClose}>Publish event</button>
-          }
+          <button className="modal-btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+          {step > 1 && <button className="modal-btn-secondary" onClick={() => setStep(step - 1)} disabled={saving}>Back</button>}
+          {step < 3 ? (
+            <button className="modal-btn-primary" onClick={() => setStep(step + 1)} disabled={step === 1 && !title.trim()}>Continue</button>
+          ) : (
+            <button className="modal-btn-primary" onClick={submit} disabled={!canPublish || saving}>{saving ? 'Publishing...' : 'Publish event'}</button>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
-// ── Invite Modal ─────────────────────────────────────────────────────────────
 function InviteModal({ onClose }: { onClose: () => void }) {
   const [copied, setCopied] = useState<'link' | 'code' | null>(null);
   const [emailInput, setEmailInput] = useState('');
@@ -448,14 +485,14 @@ function InviteModal({ onClose }: { onClose: () => void }) {
       <div className="modal-panel" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">Invite Students</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}>вњ•</button>
         </div>
         <div className="invite-section">
           <div className="invite-label">Invitation link</div>
           <div className="invite-copy-row">
             <div className="invite-value">https://demetra.music/join/nma_sofia_2026</div>
             <button className={`invite-copy-btn ${copied === 'link' ? 'copied' : ''}`} onClick={() => { setCopied('link'); setTimeout(() => setCopied(null), 2000); }}>
-              {copied === 'link' ? '✓ Copied' : 'Copy'}
+              {copied === 'link' ? 'вњ“ Copied' : 'Copy'}
             </button>
           </div>
         </div>
@@ -464,7 +501,7 @@ function InviteModal({ onClose }: { onClose: () => void }) {
           <div className="invite-copy-row">
             <div className="invite-value invite-code">NMA-2026-XK7</div>
             <button className={`invite-copy-btn ${copied === 'code' ? 'copied' : ''}`} onClick={() => { setCopied('code'); setTimeout(() => setCopied(null), 2000); }}>
-              {copied === 'code' ? '✓ Copied' : 'Copy'}
+              {copied === 'code' ? 'вњ“ Copied' : 'Copy'}
             </button>
           </div>
         </div>
@@ -473,7 +510,7 @@ function InviteModal({ onClose }: { onClose: () => void }) {
           <div className="invite-email-row">
             <input type="email" placeholder="student@school.edu" value={emailInput} onChange={e => setEmailInput(e.target.value)} className="invite-email-input" onKeyDown={e => { if (e.key === 'Enter' && emailInput.trim()) { setSent(true); setEmailInput(''); setTimeout(() => setSent(false), 2500); }}} />
             <button className="invite-send-btn" onClick={() => { if (emailInput.trim()) { setSent(true); setEmailInput(''); setTimeout(() => setSent(false), 2500); }}}>
-              {sent ? '✓ Sent' : 'Send'}
+              {sent ? 'вњ“ Sent' : 'Send'}
             </button>
           </div>
         </div>
@@ -482,7 +519,7 @@ function InviteModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Dashboard ────────────────────────────────────────────────────────────────
+// в”Ђв”Ђ Dashboard в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 export default function Dashboard({ onNavigate: _onNavigate, currentUser }: DashboardProps) {
   const [section, setSection] = useState<'overview' | 'events' | 'students' | 'stages' | 'settings'>('overview');
   const [showInvite, setShowInvite] = useState(false);
@@ -490,14 +527,43 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingLayout, setEditingLayout] = useState<StageLayout | undefined>();
   const [layouts, setLayouts] = useState<StageLayout[]>(INITIAL_LAYOUTS);
+  const [eventRecords, setEventRecords] = useState<EventRecord[]>([]);
+  const [eventsError, setEventsError] = useState('');
+  const [initialEventLayout, setInitialEventLayout] = useState<StageLayout | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    const auth = getStoredAuth();
+    if (!auth || auth.user.role !== 'ORGANIZER') return;
+
+    listMyEvents(auth.token)
+      .then(({ events }) => {
+        setEventRecords(events);
+        setEventsError('');
+      })
+      .catch((err) => {
+        setEventsError(err instanceof Error ? err.message : 'Could not load events.');
+      });
+  }, []);
 
   const saveLayout = (l: StageLayout) => {
     setLayouts(prev => prev.find(x => x.id === l.id) ? prev.map(x => x.id === l.id ? l : x) : [...prev, l]);
     setShowBuilder(false);
     setEditingLayout(undefined);
   };
+
+  const openCreateEvent = (layout: StageLayout | null = null) => {
+    setInitialEventLayout(layout);
+    setShowCreate(true);
+  };
+
+  const closeCreateEvent = () => {
+    setShowCreate(false);
+    setInitialEventLayout(null);
+  };
+
+  const dashboardEvents = eventRecords.map(mapDashboardEvent);
 
   const navItems = [
     { key: 'overview' as const, label: 'Overview', icon: (
@@ -533,11 +599,18 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
   return (
     <>
       {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
-      {showCreate && <CreateEventModal layouts={layouts} onClose={() => setShowCreate(false)} />}
+      {showCreate && (
+        <CreateEventModal
+          layouts={layouts}
+          initialLayout={initialEventLayout}
+          onClose={closeCreateEvent}
+          onCreated={(event) => setEventRecords(prev => [event, ...prev])}
+        />
+      )}
       {showBuilder && <StageBuilderModal onClose={() => { setShowBuilder(false); setEditingLayout(undefined); }} onSave={saveLayout} existing={editingLayout} />}
 
       <div className="dash-page page-transition-container">
-        {/* ── Sidebar ── */}
+        {/* в”Ђв”Ђ Sidebar в”Ђв”Ђ */}
         <aside className={`dash-sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
           <div className="dash-org-card">
             <div className="dash-org-avatar">{organizationInitials}</div>
@@ -572,25 +645,25 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
           </button>
         </aside>
 
-        {/* ── Main ── */}
+        {/* в”Ђв”Ђ Main в”Ђв”Ђ */}
         <main className="dash-main">
 
-          {/* ═══ OVERVIEW ═══ */}
+          {/* в•ђв•ђв•ђ OVERVIEW в•ђв•ђв•ђ */}
           {section === 'overview' && (
             <div className="dash-section-content">
               <div className="dash-page-header">
                 <div>
-                  <div className="dash-breadcrumb">Dashboard · Overview</div>
+                  <div className="dash-breadcrumb">Dashboard / Overview</div>
                   <h1 className="dash-page-title">Welcome back, {currentUser.name}</h1>
                 </div>
-                <button className="dash-create-btn" onClick={() => setShowCreate(true)}>+ New Event</button>
+                <button className="dash-create-btn" onClick={() => openCreateEvent()}>+ New Event</button>
               </div>
 
               {/* Stats */}
               <div className="dash-stats-grid">
                 {[
                   { icon: '🎓', value: 47, label: 'Students', sub: '3 pending invites', color: '#4f8ef7', bg: 'rgba(79,142,247,0.08)' },
-                  { icon: '🎼', value: 3, label: 'Active Events', sub: '1 fully booked', color: '#e8aa2e', bg: 'rgba(232,170,46,0.08)' },
+                  { icon: '🎼', value: dashboardEvents.filter(event => event.status !== 'past').length, label: 'Active Events', sub: `${dashboardEvents.filter(event => event.status === 'full').length} fully booked`, color: '#e8aa2e', bg: 'rgba(232,170,46,0.08)' },
                   { icon: '🏛️', value: 1, label: 'Organization', sub: organizationType, color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
                   { icon: '✉️', value: 3, label: 'Open Invites', sub: '2 email · 1 link', color: '#48bb78', bg: 'rgba(72,187,120,0.08)' },
                 ].map(s => (
@@ -616,7 +689,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                     <button className="dash-section-action" onClick={() => setSection('events')}>View all</button>
                   </div>
                   <div className="dash-events-list">
-                    {MOCK_ORG_EVENTS.map(ev => {
+                    {eventsError && <div className="no-events-state">{eventsError}</div>}
+                    {!eventsError && dashboardEvents.length === 0 && <div className="no-events-state">No events created yet.</div>}
+                    {!eventsError && dashboardEvents.slice(0, 5).map(ev => {
                       const pct = Math.round((ev.registered / ev.capacity) * 100);
                       return (
                         <div key={ev.id} className="dash-event-row">
@@ -624,7 +699,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                             <div className="dash-event-row-dot" style={{ background: ev.color }} />
                             <div>
                               <div className="dash-event-row-title">{ev.title}</div>
-                              <div className="dash-event-row-meta">{ev.category} · {ev.date}</div>
+                              <div className="dash-event-row-meta">{ev.category} / {ev.date}</div>
                             </div>
                           </div>
                           <div className="dash-event-row-right">
@@ -662,7 +737,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                         </div>
                         <div>
                           <div className="overview-stage-name">{l.name}</div>
-                          <div className="overview-stage-meta">{l.rows * l.cols} seats · {l.stageShape}</div>
+                          <div className="overview-stage-meta">{l.rows * l.cols} seats / {l.stageShape}</div>
                         </div>
                         <div className="overview-stage-badge">{l.venue}</div>
                       </div>
@@ -696,15 +771,17 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
             </div>
           )}
 
-          {/* ═══ MY EVENTS ═══ */}
+          {/* в•ђв•ђв•ђ MY EVENTS в•ђв•ђв•ђ */}
           {section === 'events' && (
             <div className="dash-section-content">
               <div className="dash-page-header">
-                <div><div className="dash-breadcrumb">Dashboard · My Events</div><h1 className="dash-page-title">My Events</h1></div>
-                <button className="dash-create-btn" onClick={() => setShowCreate(true)}>+ New Event</button>
+                <div><div className="dash-breadcrumb">Dashboard / My Events</div><h1 className="dash-page-title">My Events</h1></div>
+                <button className="dash-create-btn" onClick={() => openCreateEvent()}>+ New Event</button>
               </div>
               <div className="dash-events-full-list">
-                {MOCK_ORG_EVENTS.map(ev => {
+                {eventsError && <div className="no-events-state">{eventsError}</div>}
+                {!eventsError && dashboardEvents.length === 0 && <div className="no-events-state">No events created yet.</div>}
+                {!eventsError && dashboardEvents.map(ev => {
                   const pct = Math.round((ev.registered / ev.capacity) * 100);
                   return (
                     <div key={ev.id} className="dash-event-card-full" style={{ '--ev-color': ev.color } as any}>
@@ -737,17 +814,17 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
             </div>
           )}
 
-          {/* ═══ STUDENTS ═══ */}
+          {/* в•ђв•ђв•ђ STUDENTS в•ђв•ђв•ђ */}
           {section === 'students' && (
             <div className="dash-section-content">
               <div className="dash-page-header">
-                <div><div className="dash-breadcrumb">Dashboard · Students</div><h1 className="dash-page-title">Students</h1></div>
+                <div><div className="dash-breadcrumb">Dashboard / Students</div><h1 className="dash-page-title">Students</h1></div>
                 <button className="dash-create-btn" onClick={() => setShowInvite(true)}>+ Invite</button>
               </div>
               <div className="dash-content-card">
                 <div className="search-box" style={{ marginBottom: 24, width: '100%', maxWidth: 360 }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="#a0aec0" strokeWidth="1.4"/><path d="M9.5 9.5L12 12" stroke="#a0aec0" strokeWidth="1.4" strokeLinecap="round"/></svg>
-                  <input type="text" placeholder="Search students or instruments…" value={studentSearch} onChange={e => setStudentSearch(e.target.value)} />
+                  <input type="text" placeholder="Search students or instruments..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)} />
                 </div>
                 <div className="students-grid">
                   {filteredStudents.map(s => (
@@ -771,11 +848,11 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
             </div>
           )}
 
-          {/* ═══ STAGE LAYOUTS ═══ */}
+          {/* в•ђв•ђв•ђ STAGE LAYOUTS в•ђв•ђв•ђ */}
           {section === 'stages' && (
             <div className="dash-section-content">
               <div className="dash-page-header">
-                <div><div className="dash-breadcrumb">Dashboard · Stage Layouts</div><h1 className="dash-page-title">Stage Layouts</h1></div>
+                <div><div className="dash-breadcrumb">Dashboard / Stage Layouts</div><h1 className="dash-page-title">Stage Layouts</h1></div>
                 <button className="dash-create-btn" onClick={() => { setEditingLayout(undefined); setShowBuilder(true); }}>+ New Layout</button>
               </div>
               <div className="stages-grid">
@@ -784,7 +861,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                     <div className="stage-layout-card-header">
                       <div>
                         <div className="stage-layout-name">{l.name}</div>
-                        <div className="stage-layout-meta">{l.venue} · {l.rows * l.cols} seats · {l.stageShape} stage</div>
+                        <div className="stage-layout-meta">{l.venue} В· {l.rows * l.cols} seats / {l.stageShape} stage</div>
                       </div>
                       <div className="stage-layout-date">Added {l.createdAt}</div>
                     </div>
@@ -793,7 +870,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                     </div>
                     <div className="stage-layout-actions">
                       <button className="dash-action-btn" onClick={() => { setEditingLayout(l); setShowBuilder(true); }}>Edit layout</button>
-                      <button className="dash-action-btn">Use in new event</button>
+                      <button className="dash-action-btn" onClick={() => openCreateEvent(l)}>Use in new event</button>
                       <button className="dash-action-btn dash-action-btn--danger" onClick={() => setLayouts(prev => prev.filter(x => x.id !== l.id))}>Delete</button>
                     </div>
                   </div>
@@ -802,11 +879,11 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
             </div>
           )}
 
-          {/* ═══ SETTINGS ═══ */}
+          {/* в•ђв•ђв•ђ SETTINGS в•ђв•ђв•ђ */}
           {section === 'settings' && (
             <div className="dash-section-content">
               <div className="dash-page-header">
-                <div><div className="dash-breadcrumb">Dashboard · Settings</div><h1 className="dash-page-title">Organisation Settings</h1></div>
+                <div><div className="dash-breadcrumb">Dashboard / Settings</div><h1 className="dash-page-title">Organisation Settings</h1></div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 <div className="dash-content-card">
@@ -832,4 +909,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
     </>
   );
 }
+
+
+
 

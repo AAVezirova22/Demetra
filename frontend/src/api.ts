@@ -12,6 +12,29 @@ export type AuthUser = {
   } | null;
 };
 
+export type EventRecord = {
+  id: string;
+  title: string;
+  description: string | null;
+  startsAt: string | null;
+  location: string | null;
+  category: string | null;
+  capacity: number;
+  status: 'DRAFT' | 'PUBLISHED' | 'CANCELLED' | 'CLOSED';
+  registered: number;
+  organizer?: {
+    id: string;
+    name: string;
+  };
+  organization?: {
+    id: string;
+    name: string;
+    kind: string;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type AuthResponse = {
   token: string;
   user: AuthUser;
@@ -88,5 +111,44 @@ export async function fetchCurrentUser(token: string) {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+  });
+}
+
+export async function listEvents() {
+  return apiRequest<{ events: EventRecord[] }>('/events');
+}
+
+export async function listMyEvents(token: string) {
+  return apiRequest<{ events: EventRecord[] }>('/events/my', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function createEvent(token: string, input: {
+  title: string;
+  description?: string;
+  category?: string;
+  startsAt?: string;
+  location?: string;
+  capacity: number;
+}) {
+  return apiRequest<{ event: EventRecord }>('/events', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function registerForEvent(token: string, eventId: string) {
+  return apiRequest<{ success: boolean; registration: { id: string; status: 'CONFIRMED' | 'WAITLISTED' | 'CANCELLED' } }>('/register', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ eventId }),
   });
 }
