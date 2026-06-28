@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './register.css';
+import './Register.css';
 import { Building2, GraduationCap } from 'lucide-react';
 
 const orgKinds = [

@@ -524,7 +524,7 @@ function EventDetail({ event, onBack }: { event: Event; onBack: () => void }) {
 
 // ── Events List Page ─────────────────────────────────────────────────────────
 
-export default function Events({ onNavigate }: EventsProps) {
+export default function Events({ onNavigate: _onNavigate }: EventsProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'past'>('all');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');

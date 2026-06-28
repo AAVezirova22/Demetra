@@ -183,11 +183,6 @@ function PianoPlayer({ playNote }: { playNote: (f: number, i: InstrumentId) => v
           ))}
           {/* Black keys */}
           {PIANO_KEYS.filter(k => k.isBlack).map(k => {
-            const whiteIdx = whites.findIndex(w => {
-              const wNote = w.note.replace(/[#b]/, '').replace(/\d/, '');
-              const bNote = k.note.replace('#', '').replace(/\d/, '');
-              return wNote === bNote && w.note.replace(/[^0-9]/g, '') === k.note.replace(/[^0-9]/g, '');
-            });
             const leftWhiteIdx = whites.indexOf(whites.find(w => {
               const wFreq = w.freq;
               return wFreq < k.freq && whites.filter(ww => ww.freq < k.freq).sort((a,b) => b.freq - a.freq)[0]?.note === w.note;
@@ -493,7 +488,7 @@ function NotesPanel({ instrument }: { instrument: InstrumentId }) {
 }
 
 // ── Main Instruments Page ─────────────────────────────────────────────────────
-export default function Instruments({ onNavigate }: InstrumentsProps) {
+export default function Instruments({ onNavigate: _onNavigate }: InstrumentsProps) {
   const [selectedInstrument, setSelectedInstrument] = useState<InstrumentId>('piano');
   const { playNote } = useAudioEngine();
   const inst = INSTRUMENTS.find(i => i.id === selectedInstrument)!;

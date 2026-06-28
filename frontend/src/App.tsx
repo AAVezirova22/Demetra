@@ -9,7 +9,7 @@ import ClickSpark from './ClickSpark';
 import Events from './Events';
 import Dashboard from './Dashboard';
 import Instruments from './Instruments';
-import './app.css';
+import './App.css';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 

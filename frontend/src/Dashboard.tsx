@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 interface DashboardProps {
   onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments') => void;
@@ -464,7 +464,7 @@ function InviteModal({ onClose }: { onClose: () => void }) {
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
-export default function Dashboard({ onNavigate }: DashboardProps) {
+export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
   const [section, setSection] = useState<'overview' | 'events' | 'students' | 'stages' | 'settings'>('overview');
   const [showInvite, setShowInvite] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
