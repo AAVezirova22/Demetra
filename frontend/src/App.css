@@ -2793,3 +2793,990 @@ svg text {
   .builder-grid { grid-template-columns: 1fr; }
   .stages-grid { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INSTRUMENTS PAGE  —  complete replacement block for app.css
+   Find & delete the old instruments section (search for the comment
+   "INSTRUMENTS PAGE" in your app.css) and paste this entire block there.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Nav: transparent + white text (no scroll state needed here) ──────────── */
+.app-container:has(.instruments-page) .nav-container {
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+.app-container:has(.instruments-page) .nav-container.scrolled {
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  border-bottom: none !important;
+}
+.app-container:has(.instruments-page) .nav-logo { color: #ffffff !important; }
+.app-container:has(.instruments-page) .nav-link { color: rgba(255,255,255,0.88) !important; }
+.app-container:has(.instruments-page) .nav-link:hover { color: #ffffff !important; }
+.app-container:has(.instruments-page) .nav-btn {
+  background-color: #C9A227 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+.app-container:has(.instruments-page) .nav-btn:hover {
+  background-color: #9A7B1C !important;
+}
+
+/* ── Page shell: fixed viewport, no body overflow ─────────────────────────── */
+/* When instruments page is active, prevent the html/body from scrolling */
+.app-container:has(.instruments-page) {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INSTRUMENTS PAGE  —  sky-gradient redesign
+   Replace everything between the two markers in your app.css:
+     ╔══ START: "INSTRUMENTS PAGE" ══╗  …  ╚══ END: "PAGE TRANSITIONS" ══╝
+   with this block. The nav override, font import, and responsive rules
+   at the bottom of this file are also replacements — search & replace by
+   class name if you prefer surgical edits.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page shell ───────────────────────────────────────────────────────────── */
+.instruments-page {
+  width: 100%;
+  min-height: 100vh;
+  /* Sky gradient — matches reference */
+  background: linear-gradient(180deg, #2F79C0 0%, #3E87C9 38%, #79B0DB 74%, #BBD7EE 100%);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ── Drifting cloud blurs ─────────────────────────────────────────────────── */
+@keyframes insCloudA { 0%,100% { transform: translate(0,0); } 50% { transform: translate(60px,18px); } }
+@keyframes insCloudB { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-50px,-22px); } }
+
+.ins-cloud {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(18px);
+}
+.ins-cloud--a {
+  top: 8%; left: -6%; width: 520px; height: 240px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.55), rgba(255,255,255,0) 68%);
+  animation: insCloudA 26s ease-in-out infinite;
+}
+.ins-cloud--b {
+  top: 22%; right: -8%; width: 600px; height: 260px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.50), rgba(255,255,255,0) 68%);
+  animation: insCloudB 30s ease-in-out infinite;
+}
+.ins-cloud--c {
+  bottom: -4%; left: 18%; width: 760px; height: 300px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.70), rgba(255,255,255,0) 70%);
+  filter: blur(22px);
+  animation: insCloudA 34s ease-in-out infinite reverse;
+}
+
+/* ── Content wrapper ──────────────────────────────────────────────────────── */
+.ins-content {
+  position: relative;
+  z-index: 1;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 48px;
+}
+
+/* ── Hero ─────────────────────────────────────────────────────────────────── */
+.ins-hero {
+  position: relative;
+  padding: 120px 0 36px;
+}
+
+.ins-ornament {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  margin-bottom: 18px;
+}
+.ins-ornament-vline {
+  position: absolute;
+  left: 50%; top: 0;
+  width: 2px; height: 100%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, transparent, #E6C868, transparent);
+}
+.ins-ornament-hline {
+  position: absolute;
+  top: 50%; left: 0;
+  height: 2px; width: 100%;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, transparent, #E6C868, transparent);
+}
+.ins-ornament-diamond {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 6px; height: 6px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: #FBFDFE;
+}
+
+.ins-eyebrow {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: rgba(251, 253, 254, 0.82);
+  margin-bottom: 14px;
+}
+
+.ins-hero-title {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(72px, 10vw, 130px);
+  font-weight: 700;
+  line-height: 0.88;
+  color: #FBFDFE;
+  margin: 0 0 18px 0;
+  text-shadow: 0 2px 30px rgba(20, 52, 90, 0.28);
+  letter-spacing: 0.01em;
+}
+
+.ins-hero-desc {
+  font-family: 'Inter', sans-serif;
+  font-size: 17px;
+  color: rgba(251, 253, 254, 0.88);
+  margin: 0;
+  max-width: 440px;
+  line-height: 1.55;
+}
+
+/* ── Gold rule with ornament ──────────────────────────────────────────────── */
+.ins-gold-rule {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.ins-gold-rule-diamond {
+  width: 7px; height: 7px;
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #E6C868, #9A7B1C);
+  flex-shrink: 0;
+}
+.ins-gold-rule-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(201,162,39,0.7), rgba(201,162,39,0.12));
+}
+
+/* ── Instrument picker tabs ───────────────────────────────────────────────── */
+.ins-picker-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 36px;
+}
+
+.ins-picker-btn {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 18px 8px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.30);
+  font-family: 'Inter', sans-serif;
+}
+.ins-picker-btn:hover {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.55);
+}
+.ins-picker-btn.active {
+  background: #F4EFE6;
+  border-color: rgba(201,162,39,0.6);
+  box-shadow: 0 10px 24px -14px rgba(20,40,70,0.5);
+}
+
+.ins-picker-roman {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 13px;
+  transition: all 0.25s;
+  color: rgba(255,255,255,0.9);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.5);
+}
+.ins-picker-roman.active {
+  background: linear-gradient(135deg, #9A7B1C, #C9A227 48%, #E6C868);
+  border: none;
+  color: #3a2f12;
+}
+
+.ins-picker-label {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.92);
+  transition: color 0.25s;
+}
+.ins-picker-btn.active .ins-picker-label {
+  color: #2A2E35;
+}
+
+/* ── Two-column body ──────────────────────────────────────────────────────── */
+.ins-body {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 28px;
+  align-items: start;
+  padding-bottom: 80px;
+}
+
+/* ── Player column ────────────────────────────────────────────────────────── */
+.ins-player-col {}
+
+.ins-player-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.ins-player-title {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #FBFDFE;
+  letter-spacing: 0.02em;
+}
+
+.ins-fullscreen-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #9A7B1C, #C9A227 48%, #E6C868);
+  color: #2A2E35;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 6px 16px -8px rgba(154,123,28,0.7), inset 0 1px 0 rgba(255,255,255,0.4);
+  transition: box-shadow 0.2s;
+}
+.ins-fullscreen-btn:hover {
+  box-shadow: 0 8px 20px -6px rgba(154,123,28,0.8), inset 0 1px 0 rgba(255,255,255,0.4);
+}
+
+/* ── Ivory piano card ─────────────────────────────────────────────────────── */
+.ins-player-card {
+  position: relative;
+  padding: 28px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #FBF8F1, #F1EADC);
+  border: 1px solid rgba(201,162,39,0.35);
+  box-shadow:
+    0 40px 80px -34px rgba(20,40,70,0.5),
+    inset 0 2px 0 rgba(255,255,255,0.8);
+  overflow: hidden;
+}
+
+/* Paper grain texture overlay */
+.ins-player-card-grain {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  opacity: 0.045;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.05' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
+}
+
+.ins-player-card-top-bar {
+  height: 7px;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(90deg, #9A7B1C, #E6C868, #9A7B1C);
+  margin-bottom: 22px;
+  margin: -28px -28px 22px -28px;
+  border-radius: 16px 16px 0 0;
+}
+
+.ins-player-card-inner {
+  position: relative;
+}
+
+/* Pilasters layout */
+.ins-player-pilasters {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+}
+
+.ins-piano-pilaster {
+  width: 14px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  background-image:
+    linear-gradient(90deg, rgba(0,0,0,0.12), rgba(255,255,255,0.25) 30%, rgba(0,0,0,0.14)),
+    repeating-linear-gradient(90deg, #E7CF9F 0, #E7CF9F 2px, #C2A064 2px, #C2A064 4px);
+  box-shadow: inset 0 0 7px rgba(150,120,70,0.5);
+  /* top+bottom gold caps */
+  border-top: 5px solid transparent;
+  border-image: linear-gradient(90deg, #9A7B1C, #E6C868, #9A7B1C) 1;
+}
+
+.ins-player-keys-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Override instrument-player for light card context ───────────────────── */
+.ins-player-card .instrument-player {
+  padding: 8px 4px 12px;
+}
+
+/* Piano keys on light card: keep SVG white/dark scheme (already correct in TSX) */
+
+/* Violin on light card */
+.ins-player-card .violin-string-track {
+  background: rgba(22,42,67,0.04);
+  border-color: rgba(22,42,67,0.12);
+}
+.ins-player-card .violin-string-track:hover { border-color: var(--v-color); }
+.ins-player-card .violin-string-track.bowing { background: rgba(22,42,67,0.07); }
+.ins-player-card .violin-string-line::after { background: var(--v-color, rgba(22,42,67,0.25)); }
+.ins-player-card .violin-string-label { /* color already set inline */ }
+.ins-player-card .violin-string-freq { color: rgba(22,42,67,0.4); }
+.ins-player-card .instrument-hint { color: rgba(22,42,67,0.4); }
+
+/* Flute keys on light card */
+.ins-player-card .flute-key {
+  border-color: var(--fk-color);
+  background: rgba(22,42,67,0.04);
+}
+.ins-player-card .flute-key:hover { background: rgba(22,42,67,0.08); }
+.ins-player-card .flute-key.active { background: var(--fk-color); }
+.ins-player-card .flute-key-label { color: #2A2E35; }
+.ins-player-card .flute-key.active .flute-key-label { color: #fff; }
+.ins-player-card .flute-key-note { color: rgba(22,42,67,0.45); }
+.ins-player-card .flute-key.active .flute-key-note { color: rgba(255,255,255,0.7); }
+.ins-player-card .flute-key-hole { border-color: rgba(22,42,67,0.2); background: rgba(22,42,67,0.06); }
+.ins-player-card .flute-key.active .flute-key-hole { background: rgba(255,255,255,0.35); border-color: rgba(255,255,255,0.6); }
+
+/* Drum pads on light card */
+.ins-player-card .drum-pad {
+  background: rgba(22,42,67,0.06);
+  border-color: rgba(22,42,67,0.1);
+}
+.ins-player-card .drum-pad-label { color: #2A2E35; }
+.ins-player-card .drum-pad-key { color: rgba(22,42,67,0.4); }
+
+/* Guitar on light card */
+.ins-player-card svg line[stroke="rgba(22,42,67,0.2)"],
+.ins-player-card svg line[stroke="rgba(22,42,67,0.4)"] { opacity: 0.8; }
+
+
+/* ── Notes column ─────────────────────────────────────────────────────────── */
+.ins-notes-col {}
+
+.ins-notes-card {
+  position: relative;
+  padding: 24px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #F8F3EA, #F0E9DB);
+  border: 1px solid rgba(201,162,39,0.32);
+  box-shadow:
+    0 34px 70px -32px rgba(20,40,70,0.45),
+    inset 0 2px 0 rgba(255,255,255,0.7);
+  overflow: hidden;
+}
+.ins-notes-card-grain {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  opacity: 0.04;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.05' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
+}
+
+/* Notes panel: override for light cream context */
+.ins-notes-card .notes-panel { height: 100%; }
+.ins-notes-card .notes-panel-title {
+  font-family: 'Cinzel', serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: #2A2E35;
+}
+.ins-notes-card .notes-filter-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #6B7280;
+}
+.ins-notes-card .notes-new-btn {
+  background: none;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #9A7B1C;
+  cursor: pointer;
+  padding: 0;
+  border-bottom: 1px solid #C9A227;
+  padding-bottom: 2px;
+  height: auto;
+  border-radius: 0;
+}
+.ins-notes-card .notes-new-btn:hover { color: #6a5510; }
+
+.notes-gold-rule {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(201,162,39,0.55), rgba(201,162,39,0.08));
+  margin-bottom: 18px;
+}
+
+/* Note editor on cream */
+.ins-notes-card .note-editor {
+  background: #FCFAF4;
+  border: 1px solid #E6DDC9;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.ins-notes-card .note-editor-title {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(201,162,39,0.3);
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2A2E35;
+  outline: none;
+  padding: 0 0 8px 0;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+.ins-notes-card .note-editor-title::placeholder { color: rgba(107,114,128,0.55); }
+.ins-notes-card .note-editor-body {
+  width: 100%;
+  background: transparent;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #2A2E35;
+  outline: none;
+  resize: none;
+  line-height: 1.7;
+  box-sizing: border-box;
+}
+.ins-notes-card .note-editor-body::placeholder { color: rgba(107,114,128,0.45); }
+.ins-notes-card .note-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(201,162,39,0.2);
+}
+
+/* Note share panel on cream */
+.ins-notes-card .note-share-panel {
+  background: rgba(201,162,39,0.07);
+  border: 1px solid rgba(201,162,39,0.25);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.ins-notes-card .note-share-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2A2E35;
+  margin-bottom: 10px;
+}
+.ins-notes-card .share-chip {
+  background: rgba(201,162,39,0.15);
+  border: 1px solid rgba(201,162,39,0.3);
+  color: #9A7B1C;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 99px;
+}
+.ins-notes-card .share-success {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #2f855a;
+  font-weight: 600;
+  margin-top: 6px;
+}
+.ins-notes-card .invite-email-input {
+  flex: 1;
+  height: 34px;
+  border: 1px solid rgba(22,42,67,0.18);
+  background: #fff;
+  border-radius: 6px;
+  padding: 0 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #162a43;
+  outline: none;
+}
+.ins-notes-card .invite-email-input:focus {
+  border-color: #C9A227;
+  box-shadow: 0 0 0 3px rgba(201,162,39,0.1);
+}
+.ins-notes-card .invite-send-btn {
+  height: 34px;
+  padding: 0 14px;
+  background: #C9A227;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Note cards on cream */
+.ins-notes-card .notes-list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.ins-notes-card .note-card {
+  background: #FCFAF4;
+  border: 1px solid #E6DDC9;
+  border-radius: 8px;
+  padding: 16px 18px;
+  transition: border-color 0.2s;
+}
+.ins-notes-card .note-card:hover { border-color: rgba(201,162,39,0.5); }
+.ins-notes-card .note-card-title {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2A2E35;
+  line-height: 1.25;
+}
+.ins-notes-card .note-card-date {
+  font-size: 10px;
+  font-weight: 600;
+  color: #9b9384;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ins-notes-card .note-card-body {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #6B7280;
+  white-space: pre-wrap;
+  margin-bottom: 12px;
+  max-height: 80px;
+  overflow: hidden;
+}
+.ins-notes-card .note-shared-badge {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: #9A7B1C;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.ins-notes-card .note-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.ins-notes-card .note-action-btn {
+  background: none;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+  letter-spacing: 0.02em;
+}
+.ins-notes-card .note-action-btn:hover { color: #2A2E35; }
+.ins-notes-card .note-action-del:hover { color: #c53030; }
+.ins-notes-card .note-action-divider {
+  width: 1px; height: 10px;
+  background: rgba(201,162,39,0.5);
+  margin: 0 10px;
+}
+.ins-notes-card .notes-empty {
+  text-align: center;
+  padding: 32px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.ins-notes-card .notes-empty-icon { font-size: 32px; }
+.ins-notes-card .notes-other-hint {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: rgba(107,114,128,0.7);
+  text-align: center;
+  margin-top: 10px;
+}
+
+/* Shared note/editor button overrides for cream context */
+.note-btn-primary {
+  height: 34px;
+  padding: 0 18px;
+  background: #C9A227;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.note-btn-primary:hover { background: #9A7B1C; }
+.note-btn-secondary {
+  height: 34px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid rgba(22,42,67,0.16);
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  cursor: pointer;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   FULLSCREEN PIANO OVERLAY
+   ════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes insFsIn { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: scale(1); } }
+
+.ins-fs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(180deg, #2F79C0 0%, #3E87C9 40%, #79B0DB 80%, #C3DBEF 100%);
+  animation: insFsIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Clouds inside fullscreen */
+.ins-fs-cloud {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.ins-fs-cloud--a {
+  top: 9%; left: -5%; width: 540px; height: 240px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.5), rgba(255,255,255,0) 68%);
+  filter: blur(16px);
+}
+.ins-fs-cloud--b {
+  bottom: -6%; right: -4%; width: 700px; height: 300px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.6), rgba(255,255,255,0) 70%);
+  filter: blur(22px);
+}
+.ins-fs-cloud--c {
+  top: 30%; left: 25%; width: 500px; height: 200px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.25), rgba(255,255,255,0) 70%);
+  filter: blur(20px);
+}
+
+.ins-fs-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  padding: 0 42px 16px;
+}
+
+/* Top bar */
+.ins-fs-topbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 26px 0 20px;
+}
+.ins-fs-topbar-left {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.ins-fs-logo {
+  font-family: 'Cinzel', serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  padding-left: 0.22em;
+  color: #FBFDFE;
+}
+.ins-fs-studio-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(251,253,254,0.72);
+  font-family: 'Inter', sans-serif;
+}
+.ins-fs-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.ins-fs-readout {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: #E6C868;
+}
+.ins-fs-exit-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #9A7B1C, #C9A227 48%, #E6C868);
+  color: #2A2E35;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 6px 16px -8px rgba(154,123,28,0.7), inset 0 1px 0 rgba(255,255,255,0.4);
+}
+
+/* Octave controls */
+.ins-fs-octave-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.ins-fs-oct-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.45);
+  background: rgba(255,255,255,0.1);
+  color: #FBFDFE;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.ins-fs-oct-btn:hover { background: rgba(255,255,255,0.2); }
+.ins-fs-oct-display {
+  text-align: center;
+  min-width: 100px;
+}
+.ins-fs-oct-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(251,253,254,0.65);
+  margin-bottom: 2px;
+}
+.ins-fs-oct-name {
+  font-family: 'Cinzel', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #FBFDFE;
+  line-height: 1.1;
+}
+
+/* Fullscreen piano casing */
+.ins-fs-piano-wrap {
+  width: min(1560px, 95vw);
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  padding: 22px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #FBF8F1, #F1EADC);
+  border: 1px solid rgba(201,162,39,0.4);
+  box-shadow:
+    0 50px 90px -34px rgba(10,30,60,0.6),
+    inset 0 2px 0 rgba(255,255,255,0.8);
+  position: relative;
+}
+.ins-fs-piano-wrap::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 7px;
+  border-radius: 18px 18px 0 0;
+  background: linear-gradient(90deg, #9A7B1C, #E6C868, #9A7B1C);
+}
+
+.ins-fs-keys-area {
+  flex: 1;
+  position: relative;
+  height: min(44vh, 360px);
+}
+
+.ins-fs-whites {
+  display: flex;
+  height: 100%;
+}
+
+.ins-fs-white-key {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  background: linear-gradient(180deg, #FFFFFF, #FBFDFE 55%, #F4EFE6);
+  border: 1px solid #E2D8C5;
+  border-top: none;
+  border-radius: 0 0 7px 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  padding-bottom: 12px;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: inset 0 -5px 9px rgba(205,191,166,0.4);
+  transition: transform 0.05s ease;
+}
+.ins-fs-white-key:active,
+.ins-fs-white-key.pressed { transform: translateY(2px); background: linear-gradient(180deg, #FBF7EF, #EFE7D6); }
+.ins-fs-white-key-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 0 0 7px 7px;
+  background: linear-gradient(180deg, transparent 36%, rgba(230,200,104,0.55));
+  box-shadow: inset 0 -12px 20px rgba(201,162,39,0.5);
+  pointer-events: none;
+}
+.ins-fs-key-hint {
+  position: relative;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9A7B1C;
+  border: 1px solid rgba(201,162,39,0.45);
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: rgba(230,200,104,0.12);
+}
+.ins-fs-key-name {
+  position: relative;
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(107,114,128,0.5);
+}
+
+.ins-fs-black-key {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  height: 62%;
+  border-radius: 0 0 5px 5px;
+  background: linear-gradient(180deg, #5a4a20, #241c0c);
+  box-shadow: 0 8px 14px rgba(30,20,5,0.55), inset 0 -2px 3px rgba(230,200,104,0.25), inset 0 2px 2px rgba(255,255,255,0.12);
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.05s ease;
+}
+.ins-fs-black-key:active,
+.ins-fs-black-key.pressed { transform: translateX(-50%) translateY(2px); }
+.ins-fs-black-key-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 0 0 5px 5px;
+  background: linear-gradient(180deg, rgba(230,200,104,0.6), rgba(201,162,39,0.95));
+  box-shadow: 0 0 18px rgba(230,200,104,0.7);
+  pointer-events: none;
+}
+.ins-fs-black-hint {
+  position: relative;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #F4E6BC;
+}
+
+.ins-fs-hint {
+  margin-top: 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  color: rgba(251,253,254,0.82);
+  text-align: center;
+}
+.ins-fs-hint strong { color: #E6C868; }
+
+/* ── Override old violin/flute/drum colors for light card ─────────────────── */
+/* These ensure readability on the cream background */
+.ins-player-card .violin-bow { background: rgba(22,42,67,0.15); }
+.ins-player-card .violin-bow.active { background: var(--v-color); }
+
+.ins-player-card .drum-pad::before { background: var(--pad-color); }
+.ins-player-card .drum-pad.active { box-shadow: 0 0 20px var(--pad-color); }
+
+/* ── instrument-hint light override ──────────────────────────────────────── */
+.ins-player-card .instrument-hint {
+  color: rgba(58, 47, 18, 0.45);
+  font-style: italic;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1100px) {
+  .ins-body { grid-template-columns: 1fr; }
+  .ins-notes-col { max-width: 100%; }
+}
+@media (max-width: 900px) {
+  .ins-content { padding: 0 24px; }
+  .ins-hero { padding: 100px 0 28px; }
+  .ins-hero-title { font-size: clamp(52px, 12vw, 90px); }
+  .ins-picker-bar { gap: 8px; }
+  .ins-picker-btn { padding: 7px 14px 7px 7px; }
+  .ins-player-card { padding: 20px; }
+  .ins-fs-inner { padding: 0 20px 12px; }
+  .ins-fs-piano-wrap { padding: 16px; }
+}
+@media (max-width: 600px) {
+  .ins-hero-title { font-size: 48px; }
+  .ins-player-pilasters { gap: 8px; }
+  .ins-piano-pilaster { width: 10px; }
+  .ins-fs-topbar { padding: 16px 0 14px; }
+  .ins-fs-logo { font-size: 18px; }
+  .ins-fs-studio-label { display: none; }
+}
