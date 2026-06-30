@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { UserCircle } from 'lucide-react';
 import {
   getStoredAuth,
   listNotifications,
@@ -8,7 +9,7 @@ import {
   type NotificationRecord,
 } from './api';
 
-type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join';
+type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join' | 'profile';
 
 interface NavbarProps {
   currentView: AppView;
@@ -165,7 +166,16 @@ export default function Navbar({ onNavigate, currentView, currentUser, onLogout,
                 <span className="nav-bell">!</span>
                 {unreadCount > 0 && <span className="nav-notification-badge">{unreadCount}</span>}
               </button>
-              <span className="nav-user">{currentUser.name}</span>
+              <button
+                type="button"
+                className={`nav-profile-btn ${currentView === 'profile' ? 'active' : ''}`}
+                onClick={() => navigate('profile')}
+                aria-label="Edit profile"
+                title="Edit profile"
+              >
+                <UserCircle size={18} />
+                <span className="nav-user">{currentUser.name}</span>
+              </button>
               {notificationsOpen && (
                 <div className="nav-notification-panel">
                   <div className="nav-notification-header">
@@ -247,7 +257,14 @@ export default function Navbar({ onNavigate, currentView, currentUser, onLogout,
           {currentUser ? (
             <>
               <div className="nav-mobile-profile">
-                <span className="nav-mobile-user">{currentUser.name}</span>
+                <button
+                  type="button"
+                  className="nav-mobile-profile-btn"
+                  onClick={() => navigate('profile')}
+                >
+                  <UserCircle size={18} />
+                  <span className="nav-mobile-user">{currentUser.name}</span>
+                </button>
                 <button
                   type="button"
                   className="nav-notification-btn"

@@ -635,6 +635,12 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
   const [studentSearch, setStudentSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const isOrganizer = currentUser?.role === 'ORGANIZER';
+  const currentOrganizationName = currentUser?.organization?.name ?? 'Your organization';
+  const profileStorageKey = currentUser?.organization?.id ? `demetra.organizationProfile.${currentUser.organization.id}` : '';
+  const [profileOrganizationName, setProfileOrganizationName] = useState('');
+  const [profileSubject, setProfileSubject] = useState('');
+  const [profileLocation, setProfileLocation] = useState('');
+  const [profileSaved, setProfileSaved] = useState(false);
 
   useEffect(() => {
     const auth = getStoredAuth();
@@ -670,6 +676,36 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
         setUnreadCount(0);
       });
   }, []);
+
+  useEffect(() => {
+    if (!profileStorageKey) return;
+
+    const saved = localStorage.getItem(profileStorageKey);
+    if (!saved) {
+      setProfileOrganizationName(currentOrganizationName);
+      setProfileSubject('');
+      setProfileLocation('');
+      setProfileSaved(false);
+      return;
+    }
+
+    try {
+      const profile = JSON.parse(saved) as {
+        organizationName?: string;
+        subject?: string;
+        location?: string;
+      };
+      setProfileOrganizationName(profile.organizationName || currentOrganizationName);
+      setProfileSubject(profile.subject || '');
+      setProfileLocation(profile.location || '');
+      setProfileSaved(false);
+    } catch {
+      setProfileOrganizationName(currentOrganizationName);
+      setProfileSubject('');
+      setProfileLocation('');
+      setProfileSaved(false);
+    }
+  }, [profileStorageKey, currentOrganizationName]);
 
   const refreshOrganization = () => {
     const auth = getStoredAuth();
@@ -714,6 +750,20 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     setInitialEventLayout(null);
   };
 
+  const saveOrganizationProfile = () => {
+    if (!profileStorageKey) return;
+
+    localStorage.setItem(profileStorageKey, JSON.stringify({
+      organizationName: profileOrganizationName.trim() || currentOrganizationName,
+      subject: profileSubject.trim(),
+      location: profileLocation.trim(),
+    }));
+    setProfileOrganizationName(profileOrganizationName.trim() || currentOrganizationName);
+    setProfileSubject(profileSubject.trim());
+    setProfileLocation(profileLocation.trim());
+    setProfileSaved(true);
+  };
+
   const dashboardEvents = eventRecords.map(mapDashboardEvent);
 
   const navItems = [
@@ -728,10 +778,10 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     )},
     ...(isOrganizer ? [{ key: 'stages' as const, label: 'Stage Layouts', icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="5" width="14" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M4 5V3.5C4 2.67 4.67 2 5.5 2h5c.83 0 1.5.67 1.5 1.5V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-    )},
+    )}] : []),
     { key: 'settings' as const, label: 'Settings', icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M2.93 2.93l1.41 1.41M11.66 11.66l1.41 1.41M2.93 13.07l1.41-1.41M11.66 4.34l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-    )}] : []),
+    )},
   ];
 
   const filteredMembers = members.filter(s =>
@@ -744,7 +794,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     return null;
   }
 
-  const organizationName = currentUser.organization?.name ?? 'Your organization';
+  const organizationName = profileOrganizationName.trim() || currentOrganizationName;
   const organizationType = titleCaseEnum(currentUser.organization?.kind);
   const organizationInitials = initials(organizationName);
 
@@ -1069,8 +1119,38 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                 <div className="dash-content-card">
                   <h2 className="dash-section-title" style={{ marginBottom: 16 }}>Organisation Profile</h2>
                   <div className="dash-settings-form">
-                    <div className="form-group"><label>Organisation Name</label><input type="text" defaultValue={organizationName} /></div>
-                    <div className="form-group"><label>Type</label><input type="text" defaultValue={organizationType} /></div>
+                    <div className="form-group">
+                      <label>Organisation Name</label>
+                      <input
+                        type="text"
+                        value={profileOrganizationName}
+                        onChange={(e) => { setProfileOrganizationName(e.target.value); setProfileSaved(false); }}
+                        placeholder="Your studio or school name"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Primary interest or subject</label>
+                      <input
+                        type="text"
+                        value={profileSubject}
+                        onChange={(e) => { setProfileSubject(e.target.value); setProfileSaved(false); }}
+                        placeholder="Piano, music theory, choir..."
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Teaching location</label>
+                      <input
+                        type="text"
+                        value={profileLocation}
+                        onChange={(e) => { setProfileLocation(e.target.value); setProfileSaved(false); }}
+                        placeholder="Sofia, online, school studio..."
+                      />
+                    </div>
+                    <div className="form-group"><label>Type</label><input type="text" value={organizationType} readOnly /></div>
+                  </div>
+                  <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <button className="dash-create-btn" onClick={saveOrganizationProfile}>Save organisation profile</button>
+                    {profileSaved && <span className="dash-status-chip active">Saved</span>}
                   </div>
                 </div>
                 <div className="dash-content-card">

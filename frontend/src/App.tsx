@@ -10,17 +10,18 @@ import Events from './Events';
 import Dashboard from './Dashboard';
 import Instruments from './Instruments';
 import JoinInvitation from './JoinInvitation';
+import Profile from './Profile';
 import { clearStoredAuth, fetchCurrentUser, getStoredAuth, storeAuth, type AuthUser } from './api';
 import './App.css';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
-export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join';
+export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join' | 'profile';
 const VIEW_KEY = 'demetra.currentView';
 
 function getStoredView(): AppView {
   const value = localStorage.getItem(VIEW_KEY);
-  return value === 'home' || value === 'register' || value === 'login' || value === 'events' || value === 'dashboard' || value === 'instruments'
+  return value === 'home' || value === 'register' || value === 'login' || value === 'events' || value === 'dashboard' || value === 'instruments' || value === 'profile'
     ? value
     : 'home';
 }
@@ -93,7 +94,7 @@ export default function App() {
   useEffect(() => {
     const auth = getStoredAuth();
     if (!auth) {
-      if (currentView === 'dashboard') setCurrentView('login');
+      if (currentView === 'dashboard' || currentView === 'profile') setCurrentView('login');
       return;
     }
 
@@ -108,7 +109,7 @@ export default function App() {
       .catch(() => {
         clearStoredAuth();
         setCurrentUser(null);
-        if (currentView === 'dashboard') setCurrentView('login');
+        if (currentView === 'dashboard' || currentView === 'profile') setCurrentView('login');
       });
   }, []);
 
@@ -122,6 +123,10 @@ export default function App() {
 
   const handleNavigate = (view: AppView) => {
     if (view === 'dashboard' && !currentUser) {
+      setCurrentView('login');
+      return;
+    }
+    if (view === 'profile' && !currentUser) {
       setCurrentView('login');
       return;
     }
@@ -282,6 +287,13 @@ export default function App() {
             onNavigate={(view) => setCurrentView(view)}
             currentUser={currentUser}
             onOpenInvitation={handleOpenInvitation}
+          />
+        )}
+
+        {currentView === 'profile' && currentUser && (
+          <Profile
+            currentUser={currentUser}
+            onUserUpdated={setCurrentUser}
           />
         )}
       </div>

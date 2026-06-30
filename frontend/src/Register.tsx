@@ -4,11 +4,6 @@ import { Building2, GraduationCap, Eye, EyeOff } from 'lucide-react';
 import { registerUser, storeAuth, type AuthUser } from './api';
 
 const orgKinds = [
-  'Music School',
-  'Conservatory',
-  'University Department',
-  'Choir',
-  'Student Club',
   'Other',
 ];
 
@@ -19,10 +14,8 @@ interface RegisterProps {
 }
 
 export default function Register({ onBackToHome, onNavigateToLogin, onAuthenticated }: RegisterProps) {
-  const [role, setRole] = useState<'organizer' | 'student'>('organizer');
-  const [orgName, setOrgName] = useState('');
-  const [kind, setKind] = useState(orgKinds[0]);
-  const [organizerName, setOrganizerName] = useState('');
+  const [role, setRole] = useState<'teacher' | 'student'>('teacher');
+  const [teacherName, setTeacherName] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,13 +29,16 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
     setIsSubmitting(true);
 
     try {
+      const normalizedTeacherName = teacherName.trim();
+      const teacherOrganizationName = `${normalizedTeacherName} Studio`.slice(0, 120);
+
       const auth = await registerUser({
-        name: role === 'organizer' ? organizerName.trim() : name.trim(),
+        name: role === 'teacher' ? normalizedTeacherName : name.trim(),
         email,
         password,
-        role: role === 'organizer' ? 'ORGANIZER' : 'STUDENT',
-        organizationName: role === 'organizer' ? orgName.trim() : undefined,
-        organizationKind: role === 'organizer' ? kind : undefined,
+        role: role === 'teacher' ? 'ORGANIZER' : 'STUDENT',
+        organizationName: role === 'teacher' ? teacherOrganizationName : undefined,
+        organizationKind: role === 'teacher' ? orgKinds[0] : undefined,
       });
       storeAuth(auth);
       onAuthenticated(auth.user);
@@ -65,8 +61,8 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
           <div className="register-header">
             <h2 className="register-title">Join the gathering</h2>
             <p className="register-subtitle">
-              {role === 'organizer'
-                ? 'Register an organization to host events, or join as a student.'
+              {role === 'teacher'
+                ? 'Create a teacher account to host recitals, lessons, and student events.'
                 : 'Create your student account to discover and register for recitals.'}
             </p>
           </div>
@@ -83,59 +79,33 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
             
             <button
               type="button"
-              onClick={() => setRole('organizer')}
-              className={`role-toggle-btn ${role === 'organizer' ? 'active' : ''}`}
+              onClick={() => setRole('teacher')}
+              className={`role-toggle-btn ${role === 'teacher' ? 'active' : ''}`}
             >
               <Building2 size={14} />
-              Organization
+              Teacher
             </button>
             
           </div>
 
           <form onSubmit={submit} className="register-form">
-            {role === 'organizer' ? (
+            {role === 'teacher' ? (
               <>
                 <div className="form-group">
-                  <label htmlFor="orgName" className="required-label">Organization name</label>
+                  <label htmlFor="teacherName" className="required-label">Teacher name</label>
                   <input
-                    id="orgName"
+                    id="teacherName"
                     type="text"
                     required
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
-                    placeholder="PGKPI"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="kind" className="required-label">Type of organization</label>
-                  <select
-                    id="kind"
-                    value={kind}
-                    onChange={(e) => setKind(e.target.value)}
-                    required
-                  >
-                    {orgKinds.map((k) => (
-                      <option key={k} value={k}>{k}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="organizerName" className="required-label">Your name</label>
-                  <input
-                    id="organizerName"
-                    type="text"
-                    required
-                    value={organizerName}
-                    onChange={(e) => setOrganizerName(e.target.value)}
+                    value={teacherName}
+                    onChange={(e) => setTeacherName(e.target.value)}
                     placeholder="Prof. Antonov"
                   />
                 </div>
               </>
             ) : (
               <div className="form-group">
-                <label htmlFor="name" className="required-label">Full name</label>
+                <label htmlFor="name" className="required-label">Student name</label>
                 <input
                   id="name"
                   type="text"
@@ -148,7 +118,7 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
             )}
 
             <div className="form-group">
-              <label htmlFor="email" className="required-label">Email</label>
+              <label htmlFor="email" className="required-label">{role === 'teacher' ? 'Work email' : 'Email'}</label>
               <input
                 id="email"
                 type="email"
@@ -156,7 +126,7 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@school.edu"
+                placeholder={role === 'teacher' ? 'teacher@studio.com' : 'you@school.edu'}
               />
             </div>
 
@@ -188,8 +158,8 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
             <button type="submit" className="register-submit-btn" disabled={isSubmitting}>
               {isSubmitting
                 ? 'Creating account...'
-                : role === 'organizer'
-                  ? 'Create organization'
+                : role === 'teacher'
+                  ? 'Create teacher account'
                   : 'Create student account'}
             </button>
           </form>

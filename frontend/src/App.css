@@ -4115,3 +4115,73 @@ svg text {
     overflow: visible !important;
   }
 }
+/* Profile page navbar/action overrides */
+.nav-profile-btn,
+.nav-mobile-profile-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.nav-profile-btn {
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+}
+
+.nav-profile-btn:hover,
+.nav-profile-btn.active {
+  background: rgba(255,255,255,0.16);
+}
+
+.nav-mobile-profile-btn {
+  padding: 0;
+  color: #162a43;
+}
+
+.app-container:has(.profile-page) .nav-container,
+.app-container:has(.profile-page) .nav-container.scrolled {
+  background-color: transparent !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.app-container:has(.profile-page) .nav-logo,
+.app-container:has(.profile-page) .nav-link,
+.app-container:has(.profile-page) .nav-user,
+.app-container:has(.profile-page) .nav-profile-btn,
+.app-container:has(.profile-page) .nav-notification-btn {
+  color: #ffffff !important;
+}
+
+.app-container:has(.profile-page) .nav-btn {
+  background-color: #c9a227 !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+@media (max-width: 760px) {
+  .app-container:has(.profile-page) .nav-container,
+  .app-container:has(.profile-page) .nav-container.scrolled,
+  .app-container:has(.profile-page) .nav-container.mobile-open {
+    background: rgba(253,251,247,0.98) !important;
+    border-bottom: 1px solid rgba(22,42,67,0.08) !important;
+    box-shadow: 0 14px 35px rgba(22,42,67,0.08) !important;
+  }
+
+  .app-container:has(.profile-page) .nav-logo,
+  .app-container:has(.profile-page) .nav-menu-toggle,
+  .app-container:has(.profile-page) .nav-profile-btn,
+  .app-container:has(.profile-page) .nav-notification-btn {
+    color: #162a43 !important;
+  }
+}
