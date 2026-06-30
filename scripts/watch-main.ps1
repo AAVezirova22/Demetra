@@ -1,7 +1,9 @@
 param(
   [int]$IntervalSeconds = 20,
   [string]$Branch = "main",
-  [switch]$SkipSslVerify
+  [switch]$SkipSslVerify,
+  [switch]$AllowCredentialPrompt,
+  [string]$GitHubToken = $env:GITHUB_TOKEN
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,10 +13,27 @@ Set-Location $repoRoot
 function Invoke-Git {
   param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
 
-  if ($SkipSslVerify) {
-    & git -c http.sslVerify=false @Arguments
-  } else {
-    & git @Arguments
+  $previousTerminalPrompt = $env:GIT_TERMINAL_PROMPT
+  $previousGcmInteractive = $env:GCM_INTERACTIVE
+
+  if (-not $AllowCredentialPrompt) {
+    $env:GIT_TERMINAL_PROMPT = "0"
+    $env:GCM_INTERACTIVE = "never"
+  }
+
+  try {
+    $gitArgs = @()
+    if ($SkipSslVerify) {
+      $gitArgs += @("-c", "http.sslVerify=false")
+    }
+    if (-not $AllowCredentialPrompt) {
+      $gitArgs += @("-c", "credential.interactive=false", "-c", "credential.helper=", "-c", "core.askPass=")
+    }
+
+    & git @gitArgs @Arguments
+  } finally {
+    $env:GIT_TERMINAL_PROMPT = $previousTerminalPrompt
+    $env:GCM_INTERACTIVE = $previousGcmInteractive
   }
 }
 
@@ -22,8 +41,23 @@ function Get-CurrentHead {
   (Invoke-Git rev-parse HEAD).Trim()
 }
 
+function Get-NetworkRemote {
+  $remoteUrl = (Invoke-Git remote get-url origin).Trim()
+  if ([string]::IsNullOrWhiteSpace($GitHubToken)) {
+    return $remoteUrl
+  }
+
+  if ($remoteUrl -match "^https://github\.com/(.+)$") {
+    $encodedToken = [Uri]::EscapeDataString($GitHubToken)
+    return "https://x-access-token:$encodedToken@github.com/$($Matches[1])"
+  }
+
+  Write-Warning "GITHUB_TOKEN is set, but origin is not an HTTPS GitHub URL. Falling back to origin."
+  return $remoteUrl
+}
+
 function Get-RemoteHead {
-  $line = Invoke-Git ls-remote origin "refs/heads/$Branch"
+  $line = Invoke-Git ls-remote (Get-NetworkRemote) "refs/heads/$Branch"
   if (-not $line) {
     throw "Could not read origin/$Branch."
   }
@@ -71,6 +105,14 @@ function Restart-ForChanges {
 }
 
 Write-Host "Watching origin/$Branch every $IntervalSeconds seconds from $repoRoot."
+if (-not $AllowCredentialPrompt) {
+  Write-Host "Git credential prompts are disabled. The watcher will warn and keep running if authentication is required."
+}
+if ([string]::IsNullOrWhiteSpace($GitHubToken)) {
+  Write-Host "No GITHUB_TOKEN is set. Private repositories may require one for unattended pulls."
+} else {
+  Write-Host "Using GITHUB_TOKEN for unattended GitHub fetches."
+}
 Write-Host "Stop with Ctrl+C."
 
 while ($true) {
@@ -84,9 +126,9 @@ while ($true) {
       if (Test-WorkingTreeDirty) {
         Write-Warning "Local uncommitted changes exist. Skipping pull to avoid overwriting work."
       } else {
-        Invoke-Git fetch origin $Branch
+        Invoke-Git fetch (Get-NetworkRemote) "$Branch`:refs/remotes/origin/$Branch"
         Invoke-Git checkout $Branch
-        Invoke-Git pull --ff-only origin $Branch
+        Invoke-Git merge --ff-only "origin/$Branch"
 
         $newHead = Get-CurrentHead
         $changedFiles = @(Get-ChangedFiles -Before $localHead -After $newHead)
