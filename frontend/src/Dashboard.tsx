@@ -1,9 +1,26 @@
 ﻿﻿import { useState, useEffect } from 'react';
-import { createEvent, getStoredAuth, listMyEvents, type AuthUser, type EventRecord } from './api';
+import {
+  createEvent,
+  createInvitation,
+  fetchOrganization,
+  getStoredAuth,
+  listEvents,
+  listMyEvents,
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type AuthRole,
+  type AuthUser,
+  type EventRecord,
+  type NotificationRecord,
+  type OrganizationInvitation,
+  type OrganizationMember,
+} from './api';
 
 interface DashboardProps {
-  onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments') => void;
+  onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join') => void;
   currentUser: AuthUser | null;
+  onOpenInvitation: (token: string) => void;
 }
 
 // в”Ђв”Ђ Types в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
@@ -32,17 +49,6 @@ function initials(name: string) {
 }
 
 const EVENT_COLORS = ['#4f8ef7', '#7c6df0', '#38b2ac', '#e8aa2e', '#e05c5c', '#48bb78'];
-
-const MOCK_STUDENTS = [
-  { id: 1, name: 'Anna Kostadinova', instrument: 'Violin', year: 3, email: 'anna.k@students.nma.bg', status: 'active', color: '#4f8ef7' },
-  { id: 2, name: 'Hristo Nikolov', instrument: 'Voice (Baritone)', year: 4, email: 'h.nikolov@students.nma.bg', status: 'active', color: '#7c6df0' },
-  { id: 3, name: 'Galina Todorova', instrument: 'Piano', year: 2, email: 'g.todorova@students.nma.bg', status: 'active', color: '#38b2ac' },
-  { id: 4, name: 'Dimitar Petrov', instrument: 'Piano', year: 3, email: 'd.petrov@students.nma.bg', status: 'active', color: '#e8aa2e' },
-  { id: 5, name: 'Maria Georgieva', instrument: 'Piano', year: 1, email: 'm.georgieva@students.nma.bg', status: 'pending', color: '#e05c5c' },
-  { id: 6, name: 'Teodora Ivanova', instrument: 'Piano', year: 2, email: 't.ivanova@students.nma.bg', status: 'active', color: '#48bb78' },
-  { id: 7, name: 'Stefan Dimitrov', instrument: 'Cello', year: 4, email: 's.dimitrov@students.nma.bg', status: 'active', color: '#ed8936' },
-  { id: 8, name: 'Nikoleta Popova', instrument: 'Flute', year: 1, email: 'n.popova@students.nma.bg', status: 'pending', color: '#b794f4' },
-];
 
 const INITIAL_LAYOUTS: StageLayout[] = [
   {
@@ -216,7 +222,7 @@ function SeatMap({ layout, editable = false, onUpdate }: {
                 fill={colors.fill} stroke={colors.stroke} strokeWidth={0.8}
                 style={{ cursor: editable ? 'crosshair' : 'default', transition: 'fill 0.1s ease' }}
                 onMouseEnter={(e) => {
-                  setTooltip({ x: e.clientX, y: e.clientY, text: `Row ${String.fromCharCode(65 + seat.row)}, Seat ${seat.col + 1} В· ${seat.status}` });
+                  setTooltip({ x: e.clientX, y: e.clientY, text: `Row ${String.fromCharCode(65 + seat.row)}, Seat ${seat.col + 1} / ${seat.status}` });
                   if (isPainting && editable) toggleSeat(seat.id);
                 }}
                 onMouseLeave={() => setTooltip(null)}
@@ -286,7 +292,7 @@ function StageBuilderModal({ onClose, onSave, existing }: {
       <div className="modal-panel modal-panel--xl" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">{existing ? 'Edit Layout' : 'Create Stage Layout'}</h3>
-          <button className="modal-close" onClick={onClose}>вњ•</button>
+          <button className="modal-close" onClick={onClose}>X</button>
         </div>
 
         <div className="builder-grid">
@@ -329,7 +335,7 @@ function StageBuilderModal({ onClose, onSave, existing }: {
           </div>
 
           <div className="builder-preview">
-            <div className="builder-preview-label">Live Preview вЂ” paint seat types</div>
+            <div className="builder-preview-label">Live Preview - paint seat types</div>
             <SeatMap
               layout={{ id: 'preview', name, venue, rows, cols, seats, stageShape: shape, createdAt: '' }}
               editable
@@ -475,52 +481,144 @@ function CreateEventModal({ layouts, initialLayout, onClose, onCreated }: {
     </div>
   );
 }
-function InviteModal({ onClose }: { onClose: () => void }) {
-  const [copied, setCopied] = useState<'link' | 'code' | null>(null);
+function InviteModal({ onClose, onCreated }: { onClose: () => void; onCreated: (invite: OrganizationInvitation) => void }) {
+  const [copied, setCopied] = useState<'link' | 'token' | null>(null);
   const [emailInput, setEmailInput] = useState('');
-  const [sent, setSent] = useState(false);
+  const [role, setRole] = useState<AuthRole>('STUDENT');
+  const [invite, setInvite] = useState<OrganizationInvitation | null>(null);
+  const [error, setError] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const inviteLink = invite ? `${window.location.origin}/join?token=${encodeURIComponent(invite.token)}` : '';
+  const qrUrl = inviteLink ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(inviteLink)}` : '';
+
+  const copyValue = async (kind: 'link' | 'token', value: string) => {
+    await navigator.clipboard?.writeText(value);
+    setCopied(kind);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const createInvite = async () => {
+    const auth = getStoredAuth();
+    if (!auth) return;
+    setCreating(true);
+    setError('');
+    try {
+      const result = await createInvitation(auth.token, { email: emailInput.trim() || undefined, role });
+      setInvite(result.invitation);
+      onCreated(result.invitation);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create invitation.');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-panel" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">Invite Students</h3>
-          <button className="modal-close" onClick={onClose}>вњ•</button>
+          <h3 className="modal-title">Invite members</h3>
+          <button className="modal-close" onClick={onClose}>x</button>
         </div>
         <div className="invite-section">
-          <div className="invite-label">Invitation link</div>
-          <div className="invite-copy-row">
-            <div className="invite-value">https://demetra.music/join/nma_sofia_2026</div>
-            <button className={`invite-copy-btn ${copied === 'link' ? 'copied' : ''}`} onClick={() => { setCopied('link'); setTimeout(() => setCopied(null), 2000); }}>
-              {copied === 'link' ? 'вњ“ Copied' : 'Copy'}
-            </button>
-          </div>
-        </div>
-        <div className="invite-section">
-          <div className="invite-label">Invitation code</div>
-          <div className="invite-copy-row">
-            <div className="invite-value invite-code">NMA-2026-XK7</div>
-            <button className={`invite-copy-btn ${copied === 'code' ? 'copied' : ''}`} onClick={() => { setCopied('code'); setTimeout(() => setCopied(null), 2000); }}>
-              {copied === 'code' ? 'вњ“ Copied' : 'Copy'}
-            </button>
-          </div>
-        </div>
-        <div className="invite-section">
-          <div className="invite-label">Send by email</div>
+          <div className="invite-label">Recipient</div>
           <div className="invite-email-row">
-            <input type="email" placeholder="student@school.edu" value={emailInput} onChange={e => setEmailInput(e.target.value)} className="invite-email-input" onKeyDown={e => { if (e.key === 'Enter' && emailInput.trim()) { setSent(true); setEmailInput(''); setTimeout(() => setSent(false), 2500); }}} />
-            <button className="invite-send-btn" onClick={() => { if (emailInput.trim()) { setSent(true); setEmailInput(''); setTimeout(() => setSent(false), 2500); }}}>
-              {sent ? 'вњ“ Sent' : 'Send'}
-            </button>
+            <input type="email" placeholder="student@school.edu or leave blank for open link" value={emailInput} onChange={e => setEmailInput(e.target.value)} className="invite-email-input" />
+            <select className="invite-email-input invite-role-select" value={role} onChange={(e) => setRole(e.target.value as AuthRole)}>
+              <option value="STUDENT">Student</option>
+              <option value="ORGANIZER">Organizer</option>
+            </select>
           </div>
         </div>
+        <div className="invite-section">
+          <div className="invite-label">Create invitation</div>
+          <button className="invite-send-btn invite-create-wide" onClick={createInvite} disabled={creating}>
+            {creating ? 'Creating...' : `Create ${role.toLowerCase()} invite`}
+          </button>
+          {error && <div className="auth-error" style={{ marginTop: 10 }}>{error}</div>}
+        </div>
+        {invite && (
+          <div className="invite-section">
+            <div className="invite-label">Invitation link</div>
+            <div className="invite-copy-row">
+              <div className="invite-value">{inviteLink}</div>
+              <button className={`invite-copy-btn ${copied === 'link' ? 'copied' : ''}`} onClick={() => copyValue('link', inviteLink)}>
+                {copied === 'link' ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <div className="invite-qr-row">
+              <img className="invite-qr" src={qrUrl} alt="Invitation QR code" />
+              <div className="invite-qr-copy">
+                <div className="invite-label">Invitation token</div>
+                <div className="invite-copy-row">
+                  <div className="invite-value invite-code">{invite.token.slice(0, 12).toUpperCase()}</div>
+                  <button className={`invite-copy-btn ${copied === 'token' ? 'copied' : ''}`} onClick={() => copyValue('token', invite.token)}>
+                    {copied === 'token' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NotificationPane({
+  notifications,
+  unreadCount,
+  onMarkRead,
+  onMarkAllRead,
+  onOpenInvitation,
+}: {
+  notifications: NotificationRecord[];
+  unreadCount: number;
+  onMarkRead: (id: string) => void;
+  onMarkAllRead: () => void;
+  onOpenInvitation: (token: string) => void;
+}) {
+  const openNotification = (notification: NotificationRecord) => {
+    if (notification.status === 'UNREAD') onMarkRead(notification.id);
+    if (notification.type !== 'OrganizationInvite' || !notification.metadata || typeof notification.metadata !== 'object') return;
+    const token = (notification.metadata as { token?: unknown }).token;
+    if (typeof token === 'string') onOpenInvitation(token);
+  };
+
+  return (
+    <div className="notification-pane">
+      <div className="notification-pane-header">
+        <div>
+          <h2 className="dash-section-title">Notifications</h2>
+          <div className="notification-pane-sub">{unreadCount} unread</div>
+        </div>
+        <button className="dash-section-action" onClick={onMarkAllRead} disabled={unreadCount === 0}>Mark all read</button>
+      </div>
+      <div className="notification-list">
+        {notifications.length === 0 && <div className="notification-empty">No notifications yet.</div>}
+        {notifications.map((notification) => (
+          <button
+            type="button"
+            key={notification.id}
+            className={`notification-item ${notification.status === 'UNREAD' ? 'unread' : ''}`}
+            onClick={() => openNotification(notification)}
+          >
+            <span className="notification-dot" />
+            <span className="notification-body">
+              <span className="notification-title">{notification.title}</span>
+              <span className="notification-message">{notification.message}</span>
+              <span className="notification-time">{new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(notification.createdAt))}</span>
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );
 }
 
 // в”Ђв”Ђ Dashboard в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-export default function Dashboard({ onNavigate: _onNavigate, currentUser }: DashboardProps) {
+export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpenInvitation }: DashboardProps) {
   const [section, setSection] = useState<'overview' | 'events' | 'students' | 'stages' | 'settings'>('overview');
   const [showInvite, setShowInvite] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -528,24 +626,77 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
   const [editingLayout, setEditingLayout] = useState<StageLayout | undefined>();
   const [layouts, setLayouts] = useState<StageLayout[]>(INITIAL_LAYOUTS);
   const [eventRecords, setEventRecords] = useState<EventRecord[]>([]);
+  const [members, setMembers] = useState<OrganizationMember[]>([]);
+  const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
+  const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [eventsError, setEventsError] = useState('');
   const [initialEventLayout, setInitialEventLayout] = useState<StageLayout | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const isOrganizer = currentUser?.role === 'ORGANIZER';
 
   useEffect(() => {
     const auth = getStoredAuth();
-    if (!auth || auth.user.role !== 'ORGANIZER') return;
+    if (!auth || !auth.user.organization) return;
 
-    listMyEvents(auth.token)
+    const eventsRequest = auth.user.role === 'ORGANIZER' ? listMyEvents(auth.token) : listEvents();
+    eventsRequest
       .then(({ events }) => {
-        setEventRecords(events);
+        setEventRecords(auth.user.role === 'ORGANIZER' ? events : events.filter(event => event.organization?.id === auth.user.organization?.id));
         setEventsError('');
       })
       .catch((err) => {
         setEventsError(err instanceof Error ? err.message : 'Could not load events.');
       });
+
+    fetchOrganization(auth.token)
+      .then(({ members, invitations }) => {
+        setMembers(members);
+        setInvitations(invitations);
+      })
+      .catch(() => {
+        setMembers([]);
+        setInvitations([]);
+      });
+
+    listNotifications(auth.token)
+      .then(({ notifications, unreadCount }) => {
+        setNotifications(notifications);
+        setUnreadCount(unreadCount);
+      })
+      .catch(() => {
+        setNotifications([]);
+        setUnreadCount(0);
+      });
   }, []);
+
+  const refreshOrganization = () => {
+    const auth = getStoredAuth();
+    if (!auth) return;
+    fetchOrganization(auth.token)
+      .then(({ members, invitations }) => {
+        setMembers(members);
+        setInvitations(invitations);
+      })
+      .catch(() => undefined);
+  };
+
+  const markRead = (id: string) => {
+    const auth = getStoredAuth();
+    if (!auth) return;
+    setNotifications(prev => prev.map(item => item.id === id ? { ...item, status: 'READ', readAt: new Date().toISOString() } : item));
+    setUnreadCount(count => Math.max(0, count - 1));
+    markNotificationRead(auth.token, id).catch(() => undefined);
+  };
+
+  const markAllRead = () => {
+    const auth = getStoredAuth();
+    if (!auth) return;
+    setNotifications(prev => prev.map(item => ({ ...item, status: 'READ', readAt: item.readAt ?? new Date().toISOString() })));
+    setUnreadCount(0);
+    markAllNotificationsRead(auth.token).catch(() => undefined);
+  };
 
   const saveLayout = (l: StageLayout) => {
     setLayouts(prev => prev.find(x => x.id === l.id) ? prev.map(x => x.id === l.id ? l : x) : [...prev, l]);
@@ -575,20 +726,21 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
     { key: 'students' as const, label: 'Students', icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.5"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
     )},
-    { key: 'stages' as const, label: 'Stage Layouts', icon: (
+    ...(isOrganizer ? [{ key: 'stages' as const, label: 'Stage Layouts', icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="5" width="14" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M4 5V3.5C4 2.67 4.67 2 5.5 2h5c.83 0 1.5.67 1.5 1.5V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
     )},
     { key: 'settings' as const, label: 'Settings', icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M2.93 2.93l1.41 1.41M11.66 11.66l1.41 1.41M2.93 13.07l1.41-1.41M11.66 4.34l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-    )},
+    )}] : []),
   ];
 
-  const filteredStudents = MOCK_STUDENTS.filter(s =>
+  const filteredMembers = members.filter(s =>
     s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-    s.instrument.toLowerCase().includes(studentSearch.toLowerCase())
+    s.email.toLowerCase().includes(studentSearch.toLowerCase()) ||
+    s.membershipRole.toLowerCase().includes(studentSearch.toLowerCase())
   );
 
-  if (!currentUser || currentUser.role !== 'ORGANIZER') {
+  if (!currentUser || !currentUser.organization) {
     return null;
   }
 
@@ -598,8 +750,8 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
 
   return (
     <>
-      {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
-      {showCreate && (
+      {isOrganizer && showInvite && <InviteModal onClose={() => setShowInvite(false)} onCreated={(invite) => { setInvitations(prev => [invite, ...prev]); refreshOrganization(); }} />}
+      {isOrganizer && showCreate && (
         <CreateEventModal
           layouts={layouts}
           initialLayout={initialEventLayout}
@@ -607,7 +759,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
           onCreated={(event) => setEventRecords(prev => [event, ...prev])}
         />
       )}
-      {showBuilder && <StageBuilderModal onClose={() => { setShowBuilder(false); setEditingLayout(undefined); }} onSave={saveLayout} existing={editingLayout} />}
+      {isOrganizer && showBuilder && <StageBuilderModal onClose={() => { setShowBuilder(false); setEditingLayout(undefined); }} onSave={saveLayout} existing={editingLayout} />}
 
       <div className="dash-page page-transition-container">
         {/* в”Ђв”Ђ Sidebar в”Ђв”Ђ */}
@@ -633,9 +785,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
               </button>
             ))}
           </nav>
-          {sidebarOpen && (
+          {isOrganizer && sidebarOpen && (
             <button className="dash-invite-btn" onClick={() => setShowInvite(true)}>
-              + Invite Students
+              + Invite Members
             </button>
           )}
           <button className="dash-sidebar-toggle" onClick={() => setSidebarOpen(o => !o)}>
@@ -656,16 +808,16 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                   <div className="dash-breadcrumb">Dashboard / Overview</div>
                   <h1 className="dash-page-title">Welcome back, {currentUser.name}</h1>
                 </div>
-                <button className="dash-create-btn" onClick={() => openCreateEvent()}>+ New Event</button>
+                {isOrganizer && <button className="dash-create-btn" onClick={() => openCreateEvent()}>+ New Event</button>}
               </div>
 
               {/* Stats */}
               <div className="dash-stats-grid">
                 {[
-                  { icon: '🎓', value: 47, label: 'Students', sub: '3 pending invites', color: '#4f8ef7', bg: 'rgba(79,142,247,0.08)' },
-                  { icon: '🎼', value: dashboardEvents.filter(event => event.status !== 'past').length, label: 'Active Events', sub: `${dashboardEvents.filter(event => event.status === 'full').length} fully booked`, color: '#e8aa2e', bg: 'rgba(232,170,46,0.08)' },
-                  { icon: '🏛️', value: 1, label: 'Organization', sub: organizationType, color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
-                  { icon: '✉️', value: 3, label: 'Open Invites', sub: '2 email · 1 link', color: '#48bb78', bg: 'rgba(72,187,120,0.08)' },
+                  { icon: 'ST', value: members.filter(member => member.membershipRole === 'STUDENT').length, label: 'Students', sub: isOrganizer ? `${invitations.filter(invite => invite.role === 'STUDENT').length} pending invites` : 'In your organization', color: '#4f8ef7', bg: 'rgba(79,142,247,0.08)' },
+                  { icon: 'EV', value: dashboardEvents.filter(event => event.status !== 'past').length, label: 'Active Events', sub: `${dashboardEvents.filter(event => event.status === 'full').length} fully booked`, color: '#e8aa2e', bg: 'rgba(232,170,46,0.08)' },
+                  { icon: 'OR', value: members.filter(member => member.membershipRole === 'ORGANIZER').length, label: 'Organizers', sub: organizationType, color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
+                  ...(isOrganizer ? [{ icon: 'IN', value: invitations.length, label: 'Open Invites', sub: `${invitations.filter(invite => invite.email).length} email / ${invitations.filter(invite => !invite.email).length} link`, color: '#48bb78', bg: 'rgba(72,187,120,0.08)' }] : []),
                 ].map(s => (
                   <div key={s.label} className="dash-stat-card" style={{ '--stat-color': s.color, '--stat-bg': s.bg } as any}>
                     <div className="dash-stat-icon-wrap">
@@ -685,7 +837,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                 {/* Events card */}
                 <div className="dash-content-card">
                   <div className="dash-section-header">
-                    <h2 className="dash-section-title">Your Events</h2>
+                    <h2 className="dash-section-title">{isOrganizer ? 'Your Events' : 'Organization Events'}</h2>
                     <button className="dash-section-action" onClick={() => setSection('events')}>View all</button>
                   </div>
                   <div className="dash-events-list">
@@ -715,7 +867,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                 </div>
 
                 {/* Stages card */}
-                <div className="dash-content-card">
+                {isOrganizer && <div className="dash-content-card">
                   <div className="dash-section-header">
                     <h2 className="dash-section-title">Stage Layouts</h2>
                     <button className="dash-section-action" onClick={() => setSection('stages')}>Manage</button>
@@ -742,9 +894,19 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                         <div className="overview-stage-badge">{l.venue}</div>
                       </div>
                     ))}
-                    <button className="overview-stage-add" onClick={() => setShowBuilder(true)}>+ New layout</button>
+                    {isOrganizer && <button className="overview-stage-add" onClick={() => setShowBuilder(true)}>+ New layout</button>}
                   </div>
-                </div>
+                </div>}
+
+                {!isOrganizer && (
+                  <NotificationPane
+                    notifications={notifications}
+                    unreadCount={unreadCount}
+                    onMarkRead={markRead}
+                    onMarkAllRead={markAllRead}
+                    onOpenInvitation={onOpenInvitation}
+                  />
+                )}
 
                 {/* Students card */}
                 <div className="dash-content-card" style={{ gridColumn: '1 / -1' }}>
@@ -753,18 +915,21 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                     <button className="dash-section-action" onClick={() => setSection('students')}>View all</button>
                   </div>
                   <div className="dash-students-preview">
-                    {MOCK_STUDENTS.slice(0, 6).map(s => (
+                    {members.slice(0, 6).map((s, index) => {
+                      const color = EVENT_COLORS[index % EVENT_COLORS.length]!;
+                      return (
                       <div key={s.id} className="dash-student-chip">
-                        <div className="dash-student-avatar" style={{ background: `${s.color}22`, color: s.color, border: `1.5px solid ${s.color}44` }}>
+                        <div className="dash-student-avatar" style={{ background: `${color}22`, color, border: `1.5px solid ${color}44` }}>
                           {s.name.split(' ').map(n => n[0]).join('')}
                         </div>
                         <div>
                           <div className="dash-student-chip-name">{s.name}</div>
-                          <div className="dash-student-chip-inst">{s.instrument}</div>
+                          <div className="dash-student-chip-inst">{s.membershipRole === 'ORGANIZER' ? 'Organizer' : 'Student'}</div>
                         </div>
-                        {s.status === 'pending' && <div className="dash-pending-badge">Pending</div>}
+                        {s.status === 'OWNER' && <div className="dash-pending-badge">Owner</div>}
                       </div>
-                    ))}
+                    );})}
+                    {members.length === 0 && <div className="no-events-state">No members yet. Create an invitation to add students and organizers.</div>}
                   </div>
                 </div>
               </div>
@@ -776,7 +941,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
             <div className="dash-section-content">
               <div className="dash-page-header">
                 <div><div className="dash-breadcrumb">Dashboard / My Events</div><h1 className="dash-page-title">My Events</h1></div>
-                <button className="dash-create-btn" onClick={() => openCreateEvent()}>+ New Event</button>
+                {isOrganizer && <button className="dash-create-btn" onClick={() => openCreateEvent()}>+ New Event</button>}
               </div>
               <div className="dash-events-full-list">
                 {eventsError && <div className="no-events-state">{eventsError}</div>}
@@ -801,11 +966,11 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                           </div>
                           <span className="capacity-pct-label">{ev.registered} / {ev.capacity}</span>
                         </div>
-                        <div className="dash-event-card-full-actions">
+                        {isOrganizer && <div className="dash-event-card-full-actions">
                           <button className="dash-action-btn">Edit</button>
                           <button className="dash-action-btn">Registrations</button>
                           <button className="dash-action-btn dash-action-btn--danger">{ev.status === 'past' ? 'Archive' : 'Cancel'}</button>
-                        </div>
+                        </div>}
                       </div>
                     </div>
                   );
@@ -819,31 +984,46 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
             <div className="dash-section-content">
               <div className="dash-page-header">
                 <div><div className="dash-breadcrumb">Dashboard / Students</div><h1 className="dash-page-title">Students</h1></div>
-                <button className="dash-create-btn" onClick={() => setShowInvite(true)}>+ Invite</button>
+                {isOrganizer && <button className="dash-create-btn" onClick={() => setShowInvite(true)}>+ Invite</button>}
               </div>
               <div className="dash-content-card">
                 <div className="search-box" style={{ marginBottom: 24, width: '100%', maxWidth: 360 }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="#a0aec0" strokeWidth="1.4"/><path d="M9.5 9.5L12 12" stroke="#a0aec0" strokeWidth="1.4" strokeLinecap="round"/></svg>
-                  <input type="text" placeholder="Search students or instruments..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)} />
+                  <input type="text" placeholder="Search members by name, email, or role..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)} />
                 </div>
                 <div className="students-grid">
-                  {filteredStudents.map(s => (
-                    <div key={s.id} className="student-card" style={{ '--s-color': s.color } as any}>
-                      <div className="student-card-avatar" style={{ background: `${s.color}18`, color: s.color, border: `2px solid ${s.color}33` }}>
+                  {filteredMembers.map((s, index) => {
+                    const color = EVENT_COLORS[index % EVENT_COLORS.length]!;
+                    return (
+                    <div key={s.id} className="student-card" style={{ '--s-color': color } as any}>
+                      <div className="student-card-avatar" style={{ background: `${color}18`, color, border: `2px solid ${color}33` }}>
                         {s.name.split(' ').map(n => n[0]).join('')}
                       </div>
                       <div className="student-card-info">
                         <div className="student-card-name">{s.name}</div>
-                        <div className="student-card-inst">{s.instrument}</div>
-                        <div className="student-card-year">Year {s.year}</div>
+                        <div className="student-card-inst">{s.email}</div>
+                        <div className="student-card-year">{s.membershipRole === 'ORGANIZER' ? 'Organizer' : 'Student'}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 'auto' }}>
-                        <span className={`dash-status-chip ${s.status}`}>{s.status === 'pending' ? 'Pending' : 'Active'}</span>
-                        <button className="dash-action-btn" style={{ padding: '3px 10px', fontSize: 11, marginLeft: 'auto' }}>Remove</button>
+                        <span className={`dash-status-chip ${s.status === 'OWNER' ? 'active' : 'active'}`}>{s.status === 'OWNER' ? 'Owner' : 'Active'}</span>
+                        <span className="member-joined-date">Joined {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(s.joinedAt))}</span>
                       </div>
                     </div>
-                  ))}
+                  );})}
+                  {filteredMembers.length === 0 && <div className="no-events-state">No members found.</div>}
                 </div>
+                {isOrganizer && invitations.length > 0 && (
+                  <div className="pending-invites-panel">
+                    <div className="invite-label">Pending invitations</div>
+                    {invitations.map(invite => (
+                      <div key={invite.id} className="pending-invite-row">
+                        <span>{invite.email ?? 'Open link'}</span>
+                        <b>{invite.role === 'ORGANIZER' ? 'Organizer' : 'Student'}</b>
+                        <em>Expires {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(invite.expiresAt))}</em>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -861,7 +1041,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                     <div className="stage-layout-card-header">
                       <div>
                         <div className="stage-layout-name">{l.name}</div>
-                        <div className="stage-layout-meta">{l.venue} В· {l.rows * l.cols} seats / {l.stageShape} stage</div>
+                        <div className="stage-layout-meta">{l.venue} / {l.rows * l.cols} seats / {l.stageShape} stage</div>
                       </div>
                       <div className="stage-layout-date">Added {l.createdAt}</div>
                     </div>
@@ -885,7 +1065,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
               <div className="dash-page-header">
                 <div><div className="dash-breadcrumb">Dashboard / Settings</div><h1 className="dash-page-title">Organisation Settings</h1></div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div className="settings-profile-grid">
                 <div className="dash-content-card">
                   <h2 className="dash-section-title" style={{ marginBottom: 16 }}>Organisation Profile</h2>
                   <div className="dash-settings-form">
@@ -901,6 +1081,13 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
                   </div>
                   <div style={{ marginTop: 16 }}><button className="dash-create-btn">Save changes</button></div>
                 </div>
+                <NotificationPane
+                  notifications={notifications}
+                  unreadCount={unreadCount}
+                  onMarkRead={markRead}
+                  onMarkAllRead={markAllRead}
+                  onOpenInvitation={onOpenInvitation}
+                />
               </div>
             </div>
           )}

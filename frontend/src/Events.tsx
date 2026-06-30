@@ -285,9 +285,9 @@ function EventDetail({ event, onBack, onNavigate, onRegistered }: { event: Event
           <div className="event-detail-tag">{event.category}</div>
           <h1 className="event-detail-title">{event.title}</h1>
           <div className="event-detail-meta-row">
-            <span>рџ“… {event.date} В· {event.time}</span>
-            <span>рџ“Ќ {event.location}</span>
-            <span>рџЏ›пёЏ {event.venue}</span>
+            <span>Date: {event.date} / {event.time}</span>
+            <span>Location: {event.location}</span>
+            <span>Venue: {event.venue}</span>
           </div>
         </div>
         <div className="event-detail-hero-emoji">{event.emoji}</div>
@@ -314,7 +314,7 @@ function EventDetail({ event, onBack, onNavigate, onRegistered }: { event: Event
             <div className="programme-list">
               {event.program.map((item, i) => (
                 item.performer === '' ? (
-                  <div key={i} className="programme-intermission">вЂ” Intermission вЂ”</div>
+                  <div key={i} className="programme-intermission">Intermission</div>
                 ) : (
                   <div key={i} className="programme-item">
                     <div className="programme-time">{item.time}</div>
@@ -395,11 +395,11 @@ function EventDetail({ event, onBack, onNavigate, onRegistered }: { event: Event
               <button className="join-btn join-btn--past" disabled>Event has passed</button>
             ) : joinState === 'joined' ? (
               <div className="join-success">
-                <span>вњ“</span> You're registered!
+                <span>Done</span> You're registered!
               </div>
             ) : joinState === 'waitlist' ? (
               <div className="join-success join-success--waitlist">
-                <span>вЏі</span> Added to waitlist
+                <span>Waitlist</span> Added to waitlist
               </div>
             ) : (
               <button
@@ -496,7 +496,7 @@ export default function Events({ onNavigate }: EventsProps) {
       <div className="events-content-wrapper">
         {/* Header */}
         <header className="events-header">
-          <div className="events-breadcrumbs">Demetra В· Events</div>
+          <div className="events-breadcrumbs">Demetra / Events</div>
           <h1 className="events-main-title">Musical Events</h1>
         </header>
 
@@ -525,7 +525,7 @@ export default function Events({ onNavigate }: EventsProps) {
               </svg>
               <input
                 type="text"
-                placeholder="Search eventsвЂ¦"
+                placeholder="Search events..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -544,7 +544,7 @@ export default function Events({ onNavigate }: EventsProps) {
         <div className="events-grid">
           {filtered.length === 0 ? (
             <div className="no-events-state">
-              <div style={{ fontSize: 40, marginBottom: 12 }}>рџЋµ</div>
+              <div className="no-events-mark">No results</div>
               {isLoading ? 'Loading events...' : eventsError || 'No events match your search.'}
             </div>
           ) : (
@@ -572,7 +572,7 @@ export default function Events({ onNavigate }: EventsProps) {
                     <div className="event-card-emoji">{ev.emoji}</div>
                   </div>
                   <div className="event-card-body">
-                    <div className="event-date">{ev.date} В· {ev.time}</div>
+                    <div className="event-date">{ev.date} / {ev.time}</div>
                     <h3 className="event-title">{ev.title}</h3>
                     <div className="event-location">
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">

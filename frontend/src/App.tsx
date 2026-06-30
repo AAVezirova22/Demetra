@@ -9,12 +9,13 @@ import ClickSpark from './ClickSpark';
 import Events from './Events';
 import Dashboard from './Dashboard';
 import Instruments from './Instruments';
+import JoinInvitation from './JoinInvitation';
 import { clearStoredAuth, fetchCurrentUser, getStoredAuth, storeAuth, type AuthUser } from './api';
 import './App.css';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
-export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments';
+export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join';
 const VIEW_KEY = 'demetra.currentView';
 
 function getStoredView(): AppView {
@@ -25,7 +26,9 @@ function getStoredView(): AppView {
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<AppView>(() => getStoredView());
+  const initialInviteToken = new URLSearchParams(window.location.search).get('token') || new URLSearchParams(window.location.search).get('invite') || '';
+  const [inviteToken, setInviteToken] = useState(initialInviteToken);
+  const [currentView, setCurrentView] = useState<AppView>(() => initialInviteToken ? 'join' : getStoredView());
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => getStoredAuth()?.user ?? null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +82,15 @@ export default function App() {
   }, [currentView]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token') || params.get('invite') || '';
+    if (token) {
+      setInviteToken(token);
+      setCurrentView('join');
+    }
+  }, []);
+
+  useEffect(() => {
     const auth = getStoredAuth();
     if (!auth) {
       if (currentView === 'dashboard') setCurrentView('login');
@@ -89,7 +101,7 @@ export default function App() {
       .then(({ user }) => {
         setCurrentUser(user);
         storeAuth({ token: auth.token, user });
-        if (currentView === 'dashboard' && user.role !== 'ORGANIZER') {
+        if (currentView === 'dashboard' && !user.organization) {
           setCurrentView('events');
         }
       })
@@ -109,7 +121,7 @@ export default function App() {
       setCurrentView('login');
       return;
     }
-    if (view === 'dashboard' && currentUser?.role !== 'ORGANIZER') {
+    if (view === 'dashboard' && !currentUser?.organization) {
       setCurrentView('events');
       return;
     }
@@ -117,9 +129,23 @@ export default function App() {
     setCurrentView(view);
   };
 
+  const handleOpenInvitation = (token: string) => {
+    setInviteToken(token);
+    window.history.replaceState(null, '', `${window.location.pathname}?token=${encodeURIComponent(token)}`);
+    setCurrentView('join');
+  };
+
   const handleAuthenticated = (user: AuthUser) => {
     setCurrentUser(user);
-    setCurrentView(user.role === 'ORGANIZER' ? 'dashboard' : 'events');
+    if (inviteToken && currentView === 'login') {
+      setCurrentView('join');
+      return;
+    }
+    if (currentView === 'join') {
+      setInviteToken('');
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    setCurrentView(user.organization ? 'dashboard' : 'events');
   };
 
   const handleLogout = () => {
@@ -140,6 +166,7 @@ export default function App() {
           currentView={currentView}
           currentUser={currentUser}
           onLogout={handleLogout}
+          onOpenInvitation={handleOpenInvitation}
         />
 
         {currentView === 'home' && (
@@ -212,7 +239,7 @@ export default function App() {
         {currentView === 'login' && (
           <Login 
             onBackToHome={() => setCurrentView('home')} 
-            onNavigateToRegister={() => setCurrentView('register')}
+            onNavigateToRegister={() => setCurrentView(inviteToken ? 'join' : 'register')}
             onAuthenticated={handleAuthenticated}
           />
         )}
@@ -227,10 +254,22 @@ export default function App() {
           <Instruments onNavigate={(view) => setCurrentView(view)} />
         )}
 
+        {currentView === 'join' && (
+          <JoinInvitation
+            token={inviteToken}
+            currentUser={currentUser}
+            onBackToHome={() => setCurrentView('home')}
+            onNavigateToLogin={() => setCurrentView('login')}
+            onAuthenticated={handleAuthenticated}
+            onLogout={handleLogout}
+          />
+        )}
+
         {currentView === 'dashboard' && (
           <Dashboard 
             onNavigate={(view) => setCurrentView(view)}
             currentUser={currentUser}
+            onOpenInvitation={handleOpenInvitation}
           />
         )}
       </div>
