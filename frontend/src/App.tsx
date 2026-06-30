@@ -164,7 +164,7 @@ export default function App() {
                 
                 <image className="sky" href="https://assets.codepen.io/721952/sky.jpg" width="1200" height="590" />
                 
-                <image className="mountMg" href="https://cdn.discordapp.com/attachments/1021731951708741644/1519047193527451770/demetraBackground2.png?ex=6a3c2271&is=6a3ad0f1&hm=cbef87e1f5a65935ac3b35240460db8eac15762e298a12a7a00d7a2409dc34f7&" width="1200" height="800"/>    
+                <image className="mountMg" href="/demetraBackground2.png" width="1200" height="800"/>    
                 <image className="cloud2" href="https://assets.codepen.io/721952/cloud2.png" width="1200" height="800"/>    
                 <image className="cloud11" href="https://assets.codepen.io/721952/cloud1.png" width="1200" height="800"/>
                 <image className="cloud31" href="https://assets.codepen.io/721952/cloud3.png" width="1200" height="800"/>
