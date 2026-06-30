@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './Register.css';
 import { loginUser, storeAuth, type AuthUser } from './api';
+import { Eye, EyeOff } from 'lucide-react';
 
 interface LoginProps {
   onBackToHome: () => void;
@@ -13,6 +14,7 @@ export default function Login({ onBackToHome, onNavigateToRegister, onAuthentica
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,16 +64,25 @@ export default function Login({ onBackToHome, onNavigateToRegister, onAuthentica
 
             <div className="form-group">
               <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                required
-                minLength={8}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
-              />
+              <div className="password-input-container">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={8}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
             </div>
 
             {error && <div className="auth-message auth-message--error">{error}</div>}
