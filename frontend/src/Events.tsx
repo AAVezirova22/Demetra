@@ -273,7 +273,6 @@ function EventDetail({ event, onBack, onNavigate, onRegistered }: { event: Event
 
   return (
     <div className="event-detail-page page-transition-container">
-      {/* Hero */}
       <div className="event-detail-hero" style={{ background: event.gradient }}>
         <button className="detail-back-btn" onClick={onBack}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -442,7 +441,30 @@ export default function Events({ onNavigate }: EventsProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'past'>('all');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<Event[]>([
+    {
+      id: 'mockup-event',
+      title: 'Mockup Event',
+      category: 'Mockup',
+      date: '2024-01-01',
+      time: '12:00',
+      location: 'Mockup Location',
+      venue: 'Mockup Venue',
+      description: 'This is a mockup event.',
+      longDescription: 'This is a long description of the mockup event.',
+      capacity: 100,
+      registered: 50,
+      price: 'Free',
+      status: 'open',
+      gradient: 'linear-gradient(135deg, #1a2a4a 0%, #2d4a7a 60%, #162a43 100%)',
+      emoji: '♪',
+      organizer: 'Mockup Organizer',
+      organizerType: 'Mockup',
+      program: [],
+      venueLayout: 'concert-hall',
+      tags: ['Mockup'],
+    },
+  ]);
   const [isLoading, setIsLoading] = useState(true);
   const [eventsError, setEventsError] = useState('');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);

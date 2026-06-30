@@ -2236,3 +2236,97 @@
     animation: insFsIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
     backdrop-filter: blur(10px); /* Add this line */
   }
+
+/* Final layout guards: keep desktop instruments to one viewport while allowing
+   internal panel scroll, and restore normal document flow on mobile. */
+@media (min-width: 1101px) {
+  .app-container:has(.instruments-page) {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .instruments-page {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .ins-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ins-hero {
+    flex: 0 0 auto;
+    padding: 88px 0 20px;
+  }
+
+  .ins-hero-title {
+    font-size: clamp(56px, 7vw, 96px);
+  }
+
+  .ins-hero-desc {
+    font-size: 15px;
+  }
+
+  .ins-gold-rule {
+    flex: 0 0 auto;
+    margin-bottom: 16px;
+  }
+
+  .ins-picker-bar {
+    flex: 0 0 auto;
+    margin-bottom: 18px;
+  }
+
+  .ins-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-bottom: 24px;
+    align-items: stretch;
+  }
+
+  .ins-player-col,
+  .ins-notes-col {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .ins-notes-card {
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 1100px) {
+  .app-container:has(.instruments-page) {
+    height: auto;
+    overflow: visible;
+  }
+
+  .instruments-page {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
+  .ins-content {
+    height: auto;
+    display: block;
+  }
+
+  .ins-body {
+    padding-bottom: 48px;
+  }
+}
+
+.ins-fs-overlay {
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.ins-fs-inner {
+  min-height: 0;
+}

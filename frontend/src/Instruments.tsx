@@ -651,6 +651,20 @@ export default function Instruments({ onNavigate: _onNavigate }: InstrumentsProp
   const { playNote } = useAudioEngine();
   const inst = INSTRUMENTS.find(i => i.id === selectedInstrument)!;
 
+  useEffect(() => {
+    if (!showFullscreen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [showFullscreen]);
+
   const renderPlayer = () => {
     switch (selectedInstrument) {
       case 'piano':  return <PianoPlayer playNote={playNote} />;
