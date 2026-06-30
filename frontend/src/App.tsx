@@ -116,6 +116,10 @@ export default function App() {
     localStorage.setItem(VIEW_KEY, currentView);
   }, [currentView]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [currentView]);
+
   const handleNavigate = (view: AppView) => {
     if (view === 'dashboard' && !currentUser) {
       setCurrentView('login');
@@ -159,7 +163,15 @@ export default function App() {
       <div 
         ref={containerRef} 
         className="app-container" 
-        style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh' }}
+        style={{
+          position: 'relative',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          minHeight: '100vh',
+          height: currentView === 'home' ? '300vh' : 'auto',
+          overflow: currentView === 'home' ? undefined : 'visible',
+        }}
       >
         <Navbar
           onNavigate={handleNavigate}

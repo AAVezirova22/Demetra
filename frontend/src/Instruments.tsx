@@ -648,8 +648,29 @@ function NotesPanel({ instrument }: { instrument: InstrumentId }) {
 export default function Instruments({ onNavigate: _onNavigate }: InstrumentsProps) {
   const [selectedInstrument, setSelectedInstrument] = useState<InstrumentId>('piano');
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const [showRotatePrompt, setShowRotatePrompt] = useState(false);
+  const [isPhonePortrait, setIsPhonePortrait] = useState(false);
   const { playNote } = useAudioEngine();
   const inst = INSTRUMENTS.find(i => i.id === selectedInstrument)!;
+
+  useEffect(() => {
+    const updateOrientation = () => {
+      setIsPhonePortrait(window.matchMedia('(max-width: 760px) and (orientation: portrait)').matches);
+    };
+
+    updateOrientation();
+    window.addEventListener('resize', updateOrientation);
+    window.addEventListener('orientationchange', updateOrientation);
+    return () => {
+      window.removeEventListener('resize', updateOrientation);
+      window.removeEventListener('orientationchange', updateOrientation);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isPhonePortrait) setShowRotatePrompt(false);
+    if (isPhonePortrait && showFullscreen) setShowFullscreen(false);
+  }, [isPhonePortrait, showFullscreen]);
 
   useEffect(() => {
     if (!showFullscreen) return;
@@ -673,6 +694,15 @@ export default function Instruments({ onNavigate: _onNavigate }: InstrumentsProp
       case 'flute':  return <FlutePlayer playNote={playNote} />;
       case 'drums':  return <DrumKit playNote={playNote} />;
     }
+  };
+
+  const openFullscreen = () => {
+    if (isPhonePortrait) {
+      setShowRotatePrompt(true);
+      return;
+    }
+    setShowRotatePrompt(false);
+    setShowFullscreen(true);
   };
 
   return (
@@ -723,7 +753,7 @@ export default function Instruments({ onNavigate: _onNavigate }: InstrumentsProp
             <div className="ins-player-topbar">
               <span className="ins-player-title">The {inst.label}</span>
               {selectedInstrument === 'piano' && (
-                <button className="ins-fullscreen-btn" onClick={() => setShowFullscreen(true)}>
+                <button className="ins-fullscreen-btn" onClick={openFullscreen}>
                   <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 1H1V5"/><path d="M9 1H13V5"/>
                     <path d="M5 13H1V9"/><path d="M9 13H13V9"/>
@@ -732,6 +762,9 @@ export default function Instruments({ onNavigate: _onNavigate }: InstrumentsProp
                 </button>
               )}
             </div>
+            {selectedInstrument === 'piano' && showRotatePrompt && (
+              <div className="ins-rotate-note">Rotate your phone to landscape to open fullscreen piano.</div>
+            )}
 
             {/* Ivory piano casing card */}
             <div className="ins-player-card">

@@ -220,3 +220,38 @@
 .password-toggle-btn svg {
   color: #607288;
 }
+
+@media (max-width: 760px) {
+  .register-container {
+    display: block;
+    width: 100%;
+    min-height: 100dvh;
+    padding: 88px 20px 36px;
+    box-sizing: border-box;
+    background: #fdfbf7;
+    overflow: visible;
+  }
+
+  .register-form-side {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    display: block;
+    padding: 0;
+  }
+
+  .register-brand {
+    display: none;
+  }
+
+  .register-card {
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+    padding: 0 !important;
+  }
+
+  .register-art-side {
+    display: none;
+  }
+}
