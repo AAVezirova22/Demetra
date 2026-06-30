@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './Auth.css';
-import { loginUser, storeAuth, type AuthUser } from './api';
+import { loginUser, storeAuth, type AuthUser } from '../../shared/api/api';
 import { Eye, EyeOff } from 'lucide-react';
 
 interface LoginProps {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Auth.css';
 import { Building2, GraduationCap, Eye, EyeOff } from 'lucide-react';
-import { registerUser, storeAuth, type AuthUser } from './api';
+import { registerUser, storeAuth, type AuthUser } from '../../shared/api/api';
 
 const orgKinds = [
   'Other',

@@ -7,7 +7,7 @@ import {
   markNotificationRead,
   type AuthUser,
   type NotificationRecord,
-} from './api';
+} from '../../shared/api/api';
 import './Navbar.css';
 
 type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join' | 'profile';

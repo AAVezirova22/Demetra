@@ -8,7 +8,7 @@ import {
   storeAuth,
   type AuthUser,
   type InvitationDetails,
-} from './api';
+} from '../../shared/api/api';
 
 function titleCaseEnum(value: string | undefined) {
   if (!value) return 'Organization';

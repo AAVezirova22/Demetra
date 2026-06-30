@@ -15,7 +15,7 @@ import {
   type NotificationRecord,
   type OrganizationInvitation,
   type OrganizationMember,
-} from './api';
+} from '../../shared/api/api';
 import './Dashboard.css';
 
 interface DashboardProps {

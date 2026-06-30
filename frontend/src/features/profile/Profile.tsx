@@ -1,6 +1,6 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { Camera, Globe, MapPin, Save, Trash2, UserRound } from 'lucide-react';
-import { getStoredAuth, storeAuth, type AuthUser } from './api';
+import { getStoredAuth, storeAuth, type AuthUser } from '../../shared/api/api';
 import './Profile.css';
 
 type ProfileData = {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getStoredAuth, listEvents, registerForEvent } from './api';
+import { getStoredAuth, listEvents, registerForEvent, type EventRecord } from '../../shared/api/api';
 import './Events.css';
 
 interface EventsProps {
@@ -30,10 +30,10 @@ interface Event {
 }
 
 const EVENT_VISUALS = [
-  { gradient: 'linear-gradient(135deg, #1a2a4a 0%, #2d4a7a 60%, #162a43 100%)', emoji: '?', layout: 'concert-hall' as const },
-  { gradient: 'linear-gradient(135deg, #1c2b1a 0%, #2d4a2a 60%, #1a3a18 100%)', emoji: '?', layout: 'outdoor' as const },
-  { gradient: 'linear-gradient(135deg, #2a1a1a 0%, #4a2020 60%, #3a1010 100%)', emoji: '?', layout: 'classroom' as const },
-  { gradient: 'linear-gradient(135deg, #1a1a2a 0%, #2a2050 60%, #1a1540 100%)', emoji: '?', layout: 'concert-hall' as const },
+  { gradient: 'linear-gradient(135deg, #1a2a4a 0%, #2d4a7a 60%, #162a43 100%)', emoji: 'EV', layout: 'concert-hall' as const },
+  { gradient: 'linear-gradient(135deg, #1c2b1a 0%, #2d4a2a 60%, #1a3a18 100%)', emoji: 'ST', layout: 'outdoor' as const },
+  { gradient: 'linear-gradient(135deg, #2a1a1a 0%, #4a2020 60%, #3a1010 100%)', emoji: 'CL', layout: 'classroom' as const },
+  { gradient: 'linear-gradient(135deg, #1a1a2a 0%, #2a2050 60%, #1a1540 100%)', emoji: 'MU', layout: 'concert-hall' as const },
 ];
 
 function titleCaseEnum(value: string | undefined) {
@@ -55,7 +55,7 @@ function formatTime(value: string | null) {
   return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }
 
-function mapApiEvent(event: import('./api').EventRecord, index: number): Event {
+function mapApiEvent(event: EventRecord, index: number): Event {
   const visual = EVENT_VISUALS[index % EVENT_VISUALS.length]!;
   const registered = event.registered ?? 0;
   const capacity = Math.max(event.capacity, 1);
