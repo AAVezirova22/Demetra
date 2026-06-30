@@ -3,12 +3,13 @@ FROM node:20-alpine
 WORKDIR /app/backend
 
 COPY backend/package*.json ./
-RUN npm ci
+RUN npm ci --include=dev --ignore-scripts --audit=false --fund=false --strict-ssl=false
+RUN ln -s /app/backend/node_modules /app/node_modules
 
 COPY prisma ../prisma
 COPY backend ./
 
-RUN npm run prisma:generate && npm run build
+RUN PRISMA_GENERATE_SKIP_AUTOINSTALL=1 NODE_TLS_REJECT_UNAUTHORIZED=0 npm run prisma:generate && npm run build
 
 EXPOSE 3000
 

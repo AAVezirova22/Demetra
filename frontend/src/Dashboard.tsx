@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿﻿import { useState, useEffect } from 'react';
 import { createEvent, getStoredAuth, listMyEvents, type AuthUser, type EventRecord } from './api';
 
 interface DashboardProps {
@@ -909,7 +909,3 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser }: Dash
     </>
   );
 }
-
-
-
-

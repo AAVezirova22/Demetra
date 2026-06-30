@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿﻿import { useEffect, useState } from 'react';
 import { getStoredAuth, listEvents, registerForEvent } from './api';
 
 interface EventsProps {
@@ -606,6 +606,3 @@ export default function Events({ onNavigate }: EventsProps) {
     </div>
   );
 }
-
-
-
