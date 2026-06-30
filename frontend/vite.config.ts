@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    allowedHosts: ['.ngrok-free.dev'],
+    allowedHosts: ['.ngrok-free.dev', '.ngrok-free.app'],
     hmr: process.env.DISABLE_VITE_HMR === 'true' ? false : undefined,
     proxy: {
       '/api': 'http://api:3000',
