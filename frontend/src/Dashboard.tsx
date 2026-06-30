@@ -814,9 +814,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
               {/* Stats */}
               <div className="dash-stats-grid">
                 {[
-                  { icon: 'ST', value: members.filter(member => member.membershipRole === 'STUDENT').length, label: 'Students', sub: isOrganizer ? `${invitations.filter(invite => invite.role === 'STUDENT').length} pending invites` : 'In your organization', color: '#4f8ef7', bg: 'rgba(79,142,247,0.08)' },
-                  { icon: 'EV', value: dashboardEvents.filter(event => event.status !== 'past').length, label: 'Active Events', sub: `${dashboardEvents.filter(event => event.status === 'full').length} fully booked`, color: '#e8aa2e', bg: 'rgba(232,170,46,0.08)' },
-                  { icon: 'OR', value: members.filter(member => member.membershipRole === 'ORGANIZER').length, label: 'Organizers', sub: organizationType, color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
+                  { icon: '🎓', value: members.filter(member => member.membershipRole === 'STUDENT').length, label: 'Students', sub: isOrganizer ? `${invitations.filter(invite => invite.role === 'STUDENT').length} pending invites` : 'In your organization', color: '#4f8ef7', bg: 'rgba(79,142,247,0.08)' },
+                  { icon: '🎼', value: dashboardEvents.filter(event => event.status !== 'past').length, label: 'Active Events', sub: `${dashboardEvents.filter(event => event.status === 'full').length} fully booked`, color: '#e8aa2e', bg: 'rgba(232,170,46,0.08)' },
+                  { icon: '🏛️', value: members.filter(member => member.membershipRole === 'ORGANIZER').length, label: 'Organizers', sub: organizationType, color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
                   ...(isOrganizer ? [{ icon: 'IN', value: invitations.length, label: 'Open Invites', sub: `${invitations.filter(invite => invite.email).length} email / ${invitations.filter(invite => !invite.email).length} link`, color: '#48bb78', bg: 'rgba(72,187,120,0.08)' }] : []),
                 ].map(s => (
                   <div key={s.label} className="dash-stat-card" style={{ '--stat-color': s.color, '--stat-bg': s.bg } as any}>
