@@ -1,4 +1,4 @@
-﻿﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   createEvent,
   createInvitation,
@@ -16,6 +16,7 @@ import {
   type OrganizationInvitation,
   type OrganizationMember,
 } from './api';
+import './Dashboard.css';
 
 interface DashboardProps {
   onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join') => void;
@@ -23,12 +24,12 @@ interface DashboardProps {
   onOpenInvitation: (token: string) => void;
 }
 
-// в”Ђв”Ђ Types в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// Types
 type SeatStatus = 'available' | 'taken' | 'selected' | 'vip' | 'blocked';
 interface Seat { id: string; row: number; col: number; status: SeatStatus; }
 interface StageLayout { id: string; name: string; venue: string; rows: number; cols: number; seats: Seat[]; stageShape: 'rect' | 'arc' | 'thrust'; createdAt: string; }
 
-// в”Ђв”Ђ Mock Data в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// Mock Data
 function titleCaseEnum(value: string | undefined) {
   if (!value) return 'Organization';
   return value
@@ -98,7 +99,7 @@ function mapDashboardEvent(event: EventRecord, index: number) {
   };
 }
 
-// в”Ђв”Ђ Animated Counter в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// Animated Counter
 function AnimatedNumber({ value, duration = 800 }: { value: number; duration?: number }) {
   const [display, setDisplay] = useState(0);
   useEffect(() => {
@@ -114,7 +115,7 @@ function AnimatedNumber({ value, duration = 800 }: { value: number; duration?: n
   return <>{display}</>;
 }
 
-// в”Ђв”Ђ Interactive Seat Map в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// Interactive Seat Map
 function SeatMap({ layout, editable = false, onUpdate }: {
   layout: StageLayout;
   editable?: boolean;
@@ -261,7 +262,7 @@ function SeatMap({ layout, editable = false, onUpdate }: {
   );
 }
 
-// в”Ђв”Ђ Stage Layout Builder Modal в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// Stage Layout Builder Modal
 function StageBuilderModal({ onClose, onSave, existing }: {
   onClose: () => void;
   onSave: (layout: StageLayout) => void;
@@ -355,7 +356,7 @@ function StageBuilderModal({ onClose, onSave, existing }: {
   );
 }
 
-// в”Ђв”Ђ Create Event Modal в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// Create Event Modal
 function CreateEventModal({ layouts, initialLayout, onClose, onCreated }: {
   layouts: StageLayout[];
   initialLayout: StageLayout | null;
@@ -446,7 +447,7 @@ function CreateEventModal({ layouts, initialLayout, onClose, onCreated }: {
               {layouts.map(l => (
                 <button key={l.id} type="button" className={`layout-select-card ${selectedLayout?.id === l.id ? 'selected' : ''}`} onClick={() => { setSelectedLayout(l); setLocation(l.venue); setCapacity(l.seats.filter(seat => seat.status !== 'blocked').length); }}>
                   <div className="layout-select-name">{l.name}</div>
-                  <div className="layout-select-meta">{l.venue} · {l.seats.filter(seat => seat.status !== 'blocked').length} usable seats</div>
+                  <div className="layout-select-meta">{l.venue} / {l.seats.filter(seat => seat.status !== 'blocked').length} usable seats</div>
                   <SeatMap layout={l} editable={false} />
                 </button>
               ))}
@@ -460,8 +461,8 @@ function CreateEventModal({ layouts, initialLayout, onClose, onCreated }: {
               <div className="preview-category">{category}</div>
               <h4>{title || 'Untitled event'}</h4>
               <p>{description || 'No description yet.'}</p>
-              <div className="preview-meta">{date || 'Date TBA'} {time ? `· ${time}` : ''}</div>
-              <div className="preview-meta">{location || 'Location TBA'} · {capacity} seats</div>
+              <div className="preview-meta">{date || 'Date TBA'} {time ? `/ ${time}` : ''}</div>
+              <div className="preview-meta">{location || 'Location TBA'} / {capacity} seats</div>
             </div>
           </div>
         )}
@@ -617,7 +618,7 @@ function NotificationPane({
   );
 }
 
-// в”Ђв”Ђ Dashboard в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// Dashboard
 export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpenInvitation }: DashboardProps) {
   const [section, setSection] = useState<'overview' | 'events' | 'students' | 'stages' | 'settings'>('overview');
   const [showInvite, setShowInvite] = useState(false);
@@ -812,7 +813,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
       {isOrganizer && showBuilder && <StageBuilderModal onClose={() => { setShowBuilder(false); setEditingLayout(undefined); }} onSave={saveLayout} existing={editingLayout} />}
 
       <div className="dash-page page-transition-container">
-        {/* в”Ђв”Ђ Sidebar в”Ђв”Ђ */}
+        {/* Sidebar */}
         <aside className={`dash-sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
           <div className="dash-org-card">
             <div className="dash-org-avatar">{organizationInitials}</div>
@@ -847,10 +848,10 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
           </button>
         </aside>
 
-        {/* в”Ђв”Ђ Main в”Ђв”Ђ */}
+        {/* Main */}
         <main className="dash-main">
 
-          {/* в•ђв•ђв•ђ OVERVIEW в•ђв•ђв•ђ */}
+          {/* Overview */}
           {section === 'overview' && (
             <div className="dash-section-content">
               <div className="dash-page-header">
@@ -864,9 +865,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
               {/* Stats */}
               <div className="dash-stats-grid">
                 {[
-                  { icon: '🎓', value: members.filter(member => member.membershipRole === 'STUDENT').length, label: 'Students', sub: isOrganizer ? `${invitations.filter(invite => invite.role === 'STUDENT').length} pending invites` : 'In your organization', color: '#4f8ef7', bg: 'rgba(79,142,247,0.08)' },
-                  { icon: '🎼', value: dashboardEvents.filter(event => event.status !== 'past').length, label: 'Active Events', sub: `${dashboardEvents.filter(event => event.status === 'full').length} fully booked`, color: '#e8aa2e', bg: 'rgba(232,170,46,0.08)' },
-                  { icon: '🏛️', value: members.filter(member => member.membershipRole === 'ORGANIZER').length, label: 'Organizers', sub: organizationType, color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
+                  { icon: 'ST', value: members.filter(member => member.membershipRole === 'STUDENT').length, label: 'Students', sub: isOrganizer ? `${invitations.filter(invite => invite.role === 'STUDENT').length} pending invites` : 'In your organization', color: '#4f8ef7', bg: 'rgba(79,142,247,0.08)' },
+                  { icon: 'EV', value: dashboardEvents.filter(event => event.status !== 'past').length, label: 'Active Events', sub: `${dashboardEvents.filter(event => event.status === 'full').length} fully booked`, color: '#e8aa2e', bg: 'rgba(232,170,46,0.08)' },
+                  { icon: 'ORG', value: members.filter(member => member.membershipRole === 'ORGANIZER').length, label: 'Organizers', sub: organizationType, color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
                   ...(isOrganizer ? [{ icon: 'IN', value: invitations.length, label: 'Open Invites', sub: `${invitations.filter(invite => invite.email).length} email / ${invitations.filter(invite => !invite.email).length} link`, color: '#48bb78', bg: 'rgba(72,187,120,0.08)' }] : []),
                 ].map(s => (
                   <div key={s.label} className="dash-stat-card" style={{ '--stat-color': s.color, '--stat-bg': s.bg } as any}>
@@ -986,7 +987,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
             </div>
           )}
 
-          {/* в•ђв•ђв•ђ MY EVENTS в•ђв•ђв•ђ */}
+          {/* My Events */}
           {section === 'events' && (
             <div className="dash-section-content">
               <div className="dash-page-header">
@@ -1029,7 +1030,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
             </div>
           )}
 
-          {/* в•ђв•ђв•ђ STUDENTS в•ђв•ђв•ђ */}
+          {/* Students */}
           {section === 'students' && (
             <div className="dash-section-content">
               <div className="dash-page-header">
@@ -1078,7 +1079,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
             </div>
           )}
 
-          {/* в•ђв•ђв•ђ STAGE LAYOUTS в•ђв•ђв•ђ */}
+          {/* Stage Layouts */}
           {section === 'stages' && (
             <div className="dash-section-content">
               <div className="dash-page-header">
@@ -1109,7 +1110,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
             </div>
           )}
 
-          {/* в•ђв•ђв•ђ SETTINGS в•ђв•ђв•ђ */}
+          {/* Settings */}
           {section === 'settings' && (
             <div className="dash-section-content">
               <div className="dash-page-header">
@@ -1176,3 +1177,5 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     </>
   );
 }
+
+

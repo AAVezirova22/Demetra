@@ -1,5 +1,6 @@
-﻿﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getStoredAuth, listEvents, registerForEvent } from './api';
+import './Events.css';
 
 interface EventsProps {
   onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard') => void;
@@ -29,10 +30,10 @@ interface Event {
 }
 
 const EVENT_VISUALS = [
-  { gradient: 'linear-gradient(135deg, #1a2a4a 0%, #2d4a7a 60%, #162a43 100%)', emoji: '♪', layout: 'concert-hall' as const },
-  { gradient: 'linear-gradient(135deg, #1c2b1a 0%, #2d4a2a 60%, #1a3a18 100%)', emoji: '♬', layout: 'outdoor' as const },
-  { gradient: 'linear-gradient(135deg, #2a1a1a 0%, #4a2020 60%, #3a1010 100%)', emoji: '♩', layout: 'classroom' as const },
-  { gradient: 'linear-gradient(135deg, #1a1a2a 0%, #2a2050 60%, #1a1540 100%)', emoji: '♫', layout: 'concert-hall' as const },
+  { gradient: 'linear-gradient(135deg, #1a2a4a 0%, #2d4a7a 60%, #162a43 100%)', emoji: '?', layout: 'concert-hall' as const },
+  { gradient: 'linear-gradient(135deg, #1c2b1a 0%, #2d4a2a 60%, #1a3a18 100%)', emoji: '?', layout: 'outdoor' as const },
+  { gradient: 'linear-gradient(135deg, #2a1a1a 0%, #4a2020 60%, #3a1010 100%)', emoji: '?', layout: 'classroom' as const },
+  { gradient: 'linear-gradient(135deg, #1a1a2a 0%, #2a2050 60%, #1a1540 100%)', emoji: '?', layout: 'concert-hall' as const },
 ];
 
 function titleCaseEnum(value: string | undefined) {
@@ -235,7 +236,7 @@ function ClassroomLayout({ capacity, registered }: { capacity: number; registere
   );
 }
 
-// в”Ђв”Ђ Event Detail Page в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// Event Detail Page
 
 function EventDetail({ event, onBack, onNavigate, onRegistered }: { event: Event; onBack: () => void; onNavigate: EventsProps['onNavigate']; onRegistered: (eventId: string, status: 'CONFIRMED' | 'WAITLISTED' | 'CANCELLED') => void }) {
   const [joinState, setJoinState] = useState<'idle' | 'joining' | 'joined' | 'waitlist'>('idle');
@@ -435,7 +436,7 @@ function EventDetail({ event, onBack, onNavigate, onRegistered }: { event: Event
   );
 }
 
-// в”Ђв”Ђ Events List Page в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// Events List Page
 
 export default function Events({ onNavigate }: EventsProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'past'>('all');
@@ -457,7 +458,7 @@ export default function Events({ onNavigate }: EventsProps) {
       price: 'Free',
       status: 'open',
       gradient: 'linear-gradient(135deg, #1a2a4a 0%, #2d4a7a 60%, #162a43 100%)',
-      emoji: '♪',
+      emoji: '?',
       organizer: 'Mockup Organizer',
       organizerType: 'Mockup',
       program: [],
@@ -628,3 +629,5 @@ export default function Events({ onNavigate }: EventsProps) {
     </div>
   );
 }
+
+

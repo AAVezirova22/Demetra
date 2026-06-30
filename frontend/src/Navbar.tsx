@@ -8,6 +8,7 @@ import {
   type AuthUser,
   type NotificationRecord,
 } from './api';
+import './Navbar.css';
 
 type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join' | 'profile';
 

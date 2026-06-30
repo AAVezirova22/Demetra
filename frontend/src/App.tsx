@@ -18,6 +18,7 @@ gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
 export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join' | 'profile';
 const VIEW_KEY = 'demetra.currentView';
+const demetraBackgroundUrl = `${import.meta.env.BASE_URL}demetraBackground2.png`;
 
 function getStoredView(): AppView {
   const value = localStorage.getItem(VIEW_KEY);
@@ -167,7 +168,7 @@ export default function App() {
     <ClickSpark sparkColor={currentView === 'home' ? "#ffffff" : "#e3cc9a"} sparkCount={10} sparkRadius={25} duration={500}>
       <div 
         ref={containerRef} 
-        className="app-container" 
+        className={`app-container ${currentView === 'home' ? 'app-home' : ''}`} 
         style={{
           position: 'relative',
           top: 0,
@@ -208,7 +209,7 @@ export default function App() {
                 
                 <image className="sky" href="https://assets.codepen.io/721952/sky.jpg" width="1200" height="590" />
                 
-                <image className="mountMg" href="/demetraBackground2.png" width="1200" height="800"/>    
+                <image className="mountMg" href={demetraBackgroundUrl} width="1200" height="800" onLoad={() => ScrollTrigger.refresh()} />    
                 <image className="cloud2" href="https://assets.codepen.io/721952/cloud2.png" width="1200" height="800"/>    
                 <image className="cloud11" href="https://assets.codepen.io/721952/cloud1.png" width="1200" height="800"/>
                 <image className="cloud31" href="https://assets.codepen.io/721952/cloud3.png" width="1200" height="800"/>

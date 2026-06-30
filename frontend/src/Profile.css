@@ -25,6 +25,23 @@
   border-color: transparent !important;
 }
 
+@media (max-width: 760px) {
+  .app-container:has(.profile-page) .nav-container,
+  .app-container:has(.profile-page) .nav-container.scrolled,
+  .app-container:has(.profile-page) .nav-container.mobile-open {
+    background: rgba(253,251,247,0.98) !important;
+    border-bottom: 1px solid rgba(22,42,67,0.08) !important;
+    box-shadow: 0 14px 35px rgba(22,42,67,0.08) !important;
+  }
+
+  .app-container:has(.profile-page) .nav-logo,
+  .app-container:has(.profile-page) .nav-menu-toggle,
+  .app-container:has(.profile-page) .nav-profile-btn,
+  .app-container:has(.profile-page) .nav-notification-btn {
+    color: #162a43 !important;
+  }
+}
+
 .profile-page {
   min-height: 100vh;
   color: #162a43;

@@ -255,3 +255,207 @@
     display: none;
   }
 }
+
+/* Register page styles moved from App.css */
+/* --- Classical Register Page Overlay Card Structure --- */
+.register-page-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgb(167, 154, 14); /* Rich dark container background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 120px 24px 40px 24px;
+  box-sizing: border-box;
+  z-index: 8;
+  overflow-y: auto;
+}
+
+.register-card {
+  width: 100%;
+  max-width: 440px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
+  animation: cardFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.register-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.register-title {
+  font-family: 'Cinzel', serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #162a43;
+  margin: 0 0 8px 0;
+  letter-spacing: 0.5px;
+}
+
+.register-subtitle {
+  font-size: 13px;
+  color: #5c6e85;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Dual-Role Grid Selectors Toggle Buttons */
+.role-toggle-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: rgba(22, 42, 67, 0.05);
+  padding: 4px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.role-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #5c6e85;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.25s ease;
+}
+
+.role-toggle-btn.active {
+  background: rgb(167, 154, 14);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(22, 42, 67, 0.15);
+}
+
+/* Individual Interactive Form Field Container Elements */
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.form-group label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #162a43;
+}
+
+.form-group input, .form-group select {
+  height: 44px;
+  width: 100%;
+  border: 1px solid rgba(22, 42, 67, 0.18);
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 0 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #162a43;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.form-group input:focus, .form-group select:focus {
+  border-color: #162a43;
+  box-shadow: 0 0 0 3px rgba(22, 42, 67, 0.08);
+}
+
+.form-group input::placeholder {
+  color: #a0aec0;
+}
+
+/* Action Submit Trigger */
+.register-submit-btn {
+  height: 46px;
+  background: rgb(167, 154, 14);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 8px;
+}
+
+.register-submit-btn:hover {
+  background: rgb(136, 126, 12);
+}
+
+.register-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.back-home-link {
+  background: none;
+  border: none;
+  color: #5c6e85;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.back-home-link:hover {
+  text-decoration: underline;
+  color: #162a43;
+}
+
+@media (max-width: 760px) {
+  .register-container {
+    display: block !important;
+    min-height: 100dvh !important;
+    padding: 88px 20px 36px !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+  }
+
+  .register-form-side {
+    display: block !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .register-card {
+    margin: 0 auto !important;
+  }
+}
+
+
