@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './Register.css';
+import './Auth.css';
 import { Building2, GraduationCap, Eye, EyeOff } from 'lucide-react';
 import { registerUser, storeAuth, type AuthUser } from './api';
 

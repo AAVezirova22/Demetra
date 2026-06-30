@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import './Instruments.css';
 
 interface InstrumentsProps {
   onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments') => void;
@@ -242,7 +243,6 @@ function FullscreenPiano({ playNote, onClose }: { playNote: (f:number, i:Instrum
         {/* Top bar */}
         <div className="ins-fs-topbar">
           <div className="ins-fs-topbar-left">
-            <span className="ins-fs-logo">DEMETRA</span>
             <span className="ins-fs-studio-label">Piano Studio</span>
           </div>
           <div className="ins-fs-topbar-right">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './Register.css';
+import './Auth.css';
 import { loginUser, storeAuth, type AuthUser } from './api';
 import { Eye, EyeOff } from 'lucide-react';
 

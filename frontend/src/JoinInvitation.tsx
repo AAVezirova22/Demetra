@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import './Register.css';
+import './Auth.css';
 import {
   acceptInvitation,
   fetchInvitation,
