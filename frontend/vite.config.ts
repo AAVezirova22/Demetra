@@ -7,10 +7,11 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: ['.ngrok-free.dev'],
+    hmr: process.env.DISABLE_VITE_HMR === 'true' ? false : undefined,
     proxy: {
-      '/api': 'http://localhost:3000',
+      '/api': 'http://api:3000',
       '/socket.io': {
-        target: 'http://localhost:3000',
+        target: 'http://api:3000',
         ws: true,
       },
     },

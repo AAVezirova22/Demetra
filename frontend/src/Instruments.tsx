@@ -188,7 +188,6 @@ function FullscreenPiano({ playNote, onClose }: { playNote: (f:number, i:Instrum
   const [pressed, setPressed] = useState<Record<string,boolean>>({});
   const [lastNote, setLastNote] = useState('READY');
   const downRef = useRef<Record<string, string>>({});
-  const closingRef = useRef(false);
 
   const pressKey = useCallback((id: string, freq: number, name: string) => {
     if (pressed[id]) return;
@@ -273,7 +272,7 @@ function FullscreenPiano({ playNote, onClose }: { playNote: (f:number, i:Instrum
           <div className="ins-fs-keys-area">
             {/* White keys */}
             <div className="ins-fs-whites">
-              {whites.map((k, i) => (
+              {whites.map((k) => (
                 <div key={k.id}
                   className={`ins-fs-white-key ${k.pressed ? 'pressed' : ''}`}
                   onPointerDown={() => { pressKey(k.id, midiFreq(parseInt(k.id.slice(1))), k.name); }}

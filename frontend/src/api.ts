@@ -35,6 +35,48 @@ export type EventRecord = {
   updatedAt: string;
 };
 
+export type OrganizationMember = {
+  id: string;
+  email: string;
+  name: string;
+  role: AuthRole;
+  membershipRole: AuthRole;
+  status: 'OWNER' | 'ACTIVE';
+  joinedAt: string;
+};
+
+export type OrganizationInvitation = {
+  id: string;
+  token: string;
+  email: string | null;
+  role: AuthRole;
+  createdAt: string;
+  expiresAt: string;
+};
+
+export type NotificationRecord = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  status: 'UNREAD' | 'READ';
+  metadata: unknown;
+  createdAt: string;
+  readAt: string | null;
+};
+
+export type InvitationDetails = {
+  token: string;
+  email: string | null;
+  role: AuthRole;
+  expiresAt: string;
+  organization: {
+    id: string;
+    name: string;
+    kind: string;
+  };
+};
+
 type AuthResponse = {
   token: string;
   user: AuthUser;
@@ -92,6 +134,7 @@ export async function registerUser(input: {
   role: AuthRole;
   organizationName?: string;
   organizationKind?: string;
+  invitationToken?: string;
 }) {
   return apiRequest<AuthResponse>('/auth/register', {
     method: 'POST',
@@ -150,5 +193,54 @@ export async function registerForEvent(token: string, eventId: string) {
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ eventId }),
+  });
+}
+
+export async function fetchOrganization(token: string) {
+  return apiRequest<{
+    organization: AuthUser['organization'];
+    members: OrganizationMember[];
+    invitations: OrganizationInvitation[];
+  }>('/organization', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function createInvitation(token: string, input: { email?: string; role: AuthRole }) {
+  return apiRequest<{ invitation: OrganizationInvitation }>('/organization/invitations', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function fetchInvitation(token: string) {
+  return apiRequest<{ invitation: InvitationDetails }>(`/invitations/${encodeURIComponent(token)}`);
+}
+
+export async function acceptInvitation(authToken: string, invitationToken: string) {
+  return apiRequest<{ user: AuthUser; organization: AuthUser['organization'] }>(`/invitations/${encodeURIComponent(invitationToken)}/accept`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${authToken}` },
+  });
+}
+
+export async function listNotifications(token: string) {
+  return apiRequest<{ notifications: NotificationRecord[]; unreadCount: number }>('/notifications', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function markNotificationRead(token: string, notificationId: string) {
+  return apiRequest<{ success: boolean }>(`/notifications/${encodeURIComponent(notificationId)}/read`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function markAllNotificationsRead(token: string) {
+  return apiRequest<{ success: boolean }>('/notifications/read-all', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
   });
 }

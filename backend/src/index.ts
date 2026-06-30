@@ -5,7 +5,7 @@ import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
 import cors from 'cors';
 import crypto from 'crypto';
-import { EventStatus, OrganizationKind, PrismaClient, Role } from '@prisma/client';
+import { EventStatus, NotificationStatus, OrganizationKind, PrismaClient, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const app = express();
@@ -53,6 +53,10 @@ app.use(cors({
   },
 }));
 app.use(express.json({ limit: '32kb' }));
+app.use('/api', (_, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
 
 const server = http.createServer(app);
 
@@ -112,6 +116,7 @@ const authAttempts = new Map<string, { count: number; resetAt: number }>();
 const AUTH_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_MAX_ATTEMPTS = 20;
 const TOKEN_TTL_SECONDS = 60 * 60 * 12;
+const INVITE_TTL_DAYS = 14;
 
 function base64Url(input: Buffer | string) {
   return Buffer.from(input).toString('base64url');
@@ -198,6 +203,10 @@ function normalizeOrganizationKind(kind: unknown) {
   return OrganizationKind.OTHER;
 }
 
+function normalizeRole(role: unknown) {
+  return role === Role.ORGANIZER || role === 'ORGANIZER' ? Role.ORGANIZER : Role.STUDENT;
+}
+
 function validateAuthInput(body: any, mode: 'register' | 'login') {
   const email = normalizeEmail(body.email);
   const password = typeof body.password === 'string' ? body.password : '';
@@ -217,11 +226,12 @@ function validateAuthInput(body: any, mode: 'register' | 'login') {
   if (mode === 'register' && (name.length < 2 || name.length > 80)) {
     return { error: 'Name must be between 2 and 80 characters.' };
   }
-  if (mode === 'register' && role === Role.ORGANIZER && (organizationName.length < 2 || organizationName.length > 120)) {
+  const hasInvitationToken = typeof body.invitationToken === 'string' && body.invitationToken.trim().length > 0;
+  if (mode === 'register' && role === Role.ORGANIZER && !hasInvitationToken && (organizationName.length < 2 || organizationName.length > 120)) {
     return { error: 'Organization name must be between 2 and 120 characters.' };
   }
 
-  return { email, password, name, role, organizationName, organizationKind };
+  return { email, password, name, role, organizationName, organizationKind, invitationToken: hasInvitationToken ? body.invitationToken.trim() : '' };
 }
 
 function authRateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -298,15 +308,32 @@ function publicUser(user: {
   role: Role;
   createdAt?: Date;
   organization?: { id: string; name: string; kind: OrganizationKind } | null;
+  memberships?: { organization: { id: string; name: string; kind: OrganizationKind } }[];
 }) {
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     role: user.role,
-    organization: user.organization ?? null,
+    organization: user.organization ?? user.memberships?.[0]?.organization ?? null,
     createdAt: user.createdAt,
   };
+}
+
+async function getUserOrganization(userId: string) {
+  const owned = await prisma.organization.findUnique({
+    where: { ownerId: userId },
+    select: { id: true, name: true, kind: true, ownerId: true },
+  });
+  if (owned) return owned;
+
+  const membership = await prisma.organizationMembership.findFirst({
+    where: { userId },
+    include: { organization: { select: { id: true, name: true, kind: true, ownerId: true } } },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  return membership?.organization ?? null;
 }
 
 app.get('/api/health', async (_, res) => {
@@ -320,16 +347,51 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
 
   try {
     const user = await prisma.$transaction(async (tx) => {
+      const invitation = input.invitationToken
+        ? await tx.organizationInvitation.findUnique({
+            where: { token: input.invitationToken },
+            include: { organization: { select: { id: true, name: true, kind: true } } },
+          })
+        : null;
+
+      if (input.invitationToken && (!invitation || invitation.acceptedAt || invitation.expiresAt <= new Date())) {
+        throw new Error('Invitation is invalid or expired.');
+      }
+      if (invitation?.email && invitation.email !== input.email) {
+        throw new Error('This invitation was issued for a different email address.');
+      }
+
       const createdUser = await tx.user.create({
         data: {
           email: input.email,
           name: input.name,
-          role: input.role,
+          role: invitation?.role ?? input.role,
           passwordHash: await hashPassword(input.password),
         },
       });
 
-      if (input.role === Role.ORGANIZER) {
+      if (invitation) {
+        await tx.organizationMembership.create({
+          data: {
+            organizationId: invitation.organizationId,
+            userId: createdUser.id,
+            role: invitation.role,
+          },
+        });
+        await tx.organizationInvitation.update({
+          where: { id: invitation.id },
+          data: { acceptedAt: new Date(), acceptedById: createdUser.id },
+        });
+        await tx.notification.create({
+          data: {
+            userId: createdUser.id,
+            type: 'OrganizationJoined',
+            title: `Joined ${invitation.organization.name}`,
+            message: `You accepted the invitation to join ${invitation.organization.name} as ${invitation.role.toLowerCase()}.`,
+            metadata: { organizationId: invitation.organizationId },
+          },
+        });
+      } else if (input.role === Role.ORGANIZER) {
         await tx.organization.create({
           data: {
             name: input.organizationName,
@@ -341,7 +403,10 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
 
       return tx.user.findUniqueOrThrow({
         where: { id: createdUser.id },
-        include: { organization: { select: { id: true, name: true, kind: true } } },
+        include: {
+          organization: { select: { id: true, name: true, kind: true } },
+          memberships: { include: { organization: { select: { id: true, name: true, kind: true } } } },
+        },
       });
     });
 
@@ -349,6 +414,9 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
   } catch (error: any) {
     if (error.code === 'P2002') {
       return res.status(409).json({ error: 'An account with this email already exists.' });
+    }
+    if (error instanceof Error && error.message.includes('Invitation')) {
+      return res.status(400).json({ error: error.message });
     }
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -362,7 +430,10 @@ app.post('/api/auth/login', authRateLimit, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { email: input.email },
-      include: { organization: { select: { id: true, name: true, kind: true } } },
+      include: {
+        organization: { select: { id: true, name: true, kind: true } },
+        memberships: { include: { organization: { select: { id: true, name: true, kind: true } } } },
+      },
     });
     if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
       return res.status(401).json({ error: 'Invalid email or password.' });
@@ -378,11 +449,232 @@ app.post('/api/auth/login', authRateLimit, async (req, res) => {
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.sub },
-    include: { organization: { select: { id: true, name: true, kind: true } } },
+    include: {
+      organization: { select: { id: true, name: true, kind: true } },
+      memberships: { include: { organization: { select: { id: true, name: true, kind: true } } } },
+    },
   });
 
   if (!user) return res.status(401).json({ error: 'Authentication required.' });
   res.json({ user: publicUser(user) });
+});
+
+app.get('/api/organization', requireAuth, async (req, res) => {
+  const organization = await getUserOrganization(req.user!.sub);
+  if (!organization) return res.status(404).json({ error: 'Organization not found.' });
+
+  const [owner, memberships] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: organization.ownerId },
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+    }),
+    prisma.organizationMembership.findMany({
+      where: { organizationId: organization.id },
+      include: { user: { select: { id: true, name: true, email: true, role: true, createdAt: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
+  ]);
+
+  const canManageOrganization = organization.ownerId === req.user!.sub ||
+    memberships.some((membership) => membership.userId === req.user!.sub && membership.role === Role.ORGANIZER);
+
+  const invitations = canManageOrganization
+    ? await prisma.organizationInvitation.findMany({
+      where: { organizationId: organization.id, acceptedAt: null, expiresAt: { gt: new Date() } },
+      select: { id: true, token: true, email: true, role: true, createdAt: true, expiresAt: true },
+      orderBy: { createdAt: 'desc' },
+    })
+    : [];
+
+  const members = [
+    ...(owner ? [{ ...owner, membershipRole: Role.ORGANIZER, status: 'OWNER', joinedAt: owner.createdAt }] : []),
+    ...memberships
+      .filter((membership) => membership.userId !== organization.ownerId)
+      .map((membership) => ({
+        ...membership.user,
+        membershipRole: membership.role,
+        status: 'ACTIVE',
+        joinedAt: membership.createdAt,
+      })),
+  ];
+
+  res.json({ organization, members, invitations });
+});
+
+app.post('/api/organization/invitations', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const organization = await getUserOrganization(req.user!.sub);
+  if (!organization) return res.status(404).json({ error: 'Organization not found.' });
+
+  const email = normalizeEmail(req.body?.email);
+  const role = normalizeRole(req.body?.role);
+  if (req.body?.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Enter a valid email address.' });
+  }
+
+  try {
+    const token = crypto.randomBytes(24).toString('base64url');
+    const invitation = await prisma.organizationInvitation.create({
+      data: {
+        token,
+        email: email || null,
+        role,
+        organizationId: organization.id,
+        createdById: req.user!.sub,
+        expiresAt: new Date(Date.now() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000),
+      },
+      select: { id: true, token: true, email: true, role: true, createdAt: true, expiresAt: true },
+    });
+
+    if (email) {
+      const invitedUser = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+      if (invitedUser) {
+        await prisma.notification.create({
+          data: {
+            userId: invitedUser.id,
+            type: 'OrganizationInvite',
+            title: `Invitation to ${organization.name}`,
+            message: `You have been invited to join ${organization.name} as ${role.toLowerCase()}.`,
+            metadata: { token, organizationId: organization.id, role },
+          },
+        });
+      }
+    }
+
+    res.status(201).json({ invitation });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.get('/api/invitations/:token', async (req, res) => {
+  const token = req.params.token;
+  if (typeof token !== 'string' || !token) return res.status(400).json({ error: 'Invitation token is required.' });
+
+  const invitation = await prisma.organizationInvitation.findUnique({
+    where: { token },
+    include: { organization: { select: { id: true, name: true, kind: true } } },
+  });
+
+  if (!invitation || invitation.acceptedAt || invitation.expiresAt <= new Date()) {
+    return res.status(404).json({ error: 'Invitation is invalid or expired.' });
+  }
+
+  res.json({
+    invitation: {
+      token: invitation.token,
+      email: invitation.email,
+      role: invitation.role,
+      expiresAt: invitation.expiresAt,
+      organization: invitation.organization,
+    },
+  });
+});
+
+app.post('/api/invitations/:token/accept', requireAuth, async (req, res) => {
+  const token = req.params.token;
+  if (typeof token !== 'string' || !token) return res.status(400).json({ error: 'Invitation token is required.' });
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const invitation = await tx.organizationInvitation.findUnique({
+        where: { token },
+        include: { organization: { select: { id: true, name: true, kind: true } } },
+      });
+
+      if (!invitation || invitation.acceptedAt || invitation.expiresAt <= new Date()) {
+        throw new Error('Invitation is invalid or expired.');
+      }
+
+      const user = await tx.user.findUniqueOrThrow({
+        where: { id: req.user!.sub },
+        select: { id: true, email: true, role: true },
+      });
+
+      if (invitation.email && invitation.email !== user.email) {
+        throw new Error('This invitation was issued for a different email address.');
+      }
+
+      await tx.user.update({
+        where: { id: user.id },
+        data: { role: invitation.role === Role.ORGANIZER ? Role.ORGANIZER : user.role },
+      });
+
+      await tx.organizationMembership.upsert({
+        where: { organizationId_userId: { organizationId: invitation.organizationId, userId: user.id } },
+        create: { organizationId: invitation.organizationId, userId: user.id, role: invitation.role },
+        update: { role: invitation.role },
+      });
+
+      await tx.organizationInvitation.update({
+        where: { id: invitation.id },
+        data: { acceptedAt: new Date(), acceptedById: user.id },
+      });
+
+      await tx.notification.create({
+        data: {
+          userId: user.id,
+          type: 'OrganizationJoined',
+          title: `Joined ${invitation.organization.name}`,
+          message: `You joined ${invitation.organization.name} as ${invitation.role.toLowerCase()}.`,
+          metadata: { organizationId: invitation.organizationId },
+        },
+      });
+
+      const updatedUser = await tx.user.findUniqueOrThrow({
+        where: { id: user.id },
+        include: {
+          organization: { select: { id: true, name: true, kind: true } },
+          memberships: { include: { organization: { select: { id: true, name: true, kind: true } } } },
+        },
+      });
+
+      return { user: updatedUser, organization: invitation.organization };
+    });
+
+    res.json({ user: publicUser(result.user), organization: result.organization });
+  } catch (error) {
+    if (error instanceof Error && (error.message.includes('Invitation') || error.message.includes('different email'))) {
+      return res.status(400).json({ error: error.message });
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.get('/api/notifications', requireAuth, async (req, res) => {
+  const notifications = await prisma.notification.findMany({
+    where: { userId: req.user!.sub },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+  });
+
+  res.json({
+    notifications,
+    unreadCount: notifications.filter((notification) => notification.status === NotificationStatus.UNREAD).length,
+  });
+});
+
+app.patch('/api/notifications/:id/read', requireAuth, async (req, res) => {
+  const id = req.params.id;
+  if (typeof id !== 'string' || !id) return res.status(400).json({ error: 'Notification id is required.' });
+
+  const notification = await prisma.notification.updateMany({
+    where: { id, userId: req.user!.sub },
+    data: { status: NotificationStatus.READ, readAt: new Date() },
+  });
+
+  if (notification.count === 0) return res.status(404).json({ error: 'Notification not found.' });
+  res.json({ success: true });
+});
+
+app.post('/api/notifications/read-all', requireAuth, async (req, res) => {
+  await prisma.notification.updateMany({
+    where: { userId: req.user!.sub, status: NotificationStatus.UNREAD },
+    data: { status: NotificationStatus.READ, readAt: new Date() },
+  });
+
+  res.json({ success: true });
 });
 
 app.get('/api/events', async (_, res) => {
@@ -427,10 +719,7 @@ app.post('/api/events', requireAuth, requireRole(Role.ORGANIZER), async (req, re
   if ('error' in input) return res.status(400).json({ error: input.error });
 
   try {
-    const organization = await prisma.organization.findUnique({
-      where: { ownerId: req.user!.sub },
-      select: { id: true },
-    });
+    const organization = await getUserOrganization(req.user!.sub);
 
     const event = await prisma.$transaction(async (tx) => {
       const created = await tx.event.create({
