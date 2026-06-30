@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './Register.css';
 import { Building2, GraduationCap } from 'lucide-react';
+import { registerUser, storeAuth, type AuthUser } from './api';
 
 const orgKinds = [
   'Music School',
@@ -14,52 +15,61 @@ const orgKinds = [
 interface RegisterProps {
   onBackToHome: () => void;
   onNavigateToLogin: () => void;
+  onAuthenticated: (user: AuthUser) => void;
 }
 
-export default function Register({ onBackToHome, onNavigateToLogin }: RegisterProps) {
+export default function Register({ onBackToHome, onNavigateToLogin, onAuthenticated }: RegisterProps) {
   const [role, setRole] = useState<'organizer' | 'student'>('organizer');
-
-  // Fields State
   const [orgName, setOrgName] = useState('');
   const [kind, setKind] = useState(orgKinds[0]);
   const [organizerName, setOrganizerName] = useState('');
   const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (role === 'organizer') {
-      console.log('Registering Org:', { orgName, kind, organizerName, username, email, password });
-      alert('Welcome to Demetra. Your organization registration was captured.');
-    } else {
-      console.log('Registering Student:', { name, username, email, password });
-      alert('Account created. Welcome to the recital hall.');
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const auth = await registerUser({
+        name: role === 'organizer' ? organizerName.trim() : name.trim(),
+        email,
+        password,
+        role: role === 'organizer' ? 'ORGANIZER' : 'STUDENT',
+        organizationName: role === 'organizer' ? orgName.trim() : undefined,
+        organizationKind: role === 'organizer' ? kind : undefined,
+      });
+      storeAuth(auth);
+      onAuthenticated(auth.user);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="register-container">
-      {/* Left Column: Form Section */}
       <div className="register-form-side">
         <header className="register-brand" onClick={onBackToHome}>
-          <span className="brand-icon">🌲</span>
+          <span className="brand-icon">D</span>
           <span className="brand-name">Demetra</span>
         </header>
 
         <div className="register-card">
-          {/* Header */}
           <div className="register-header">
             <h2 className="register-title">Join the gathering</h2>
             <p className="register-subtitle">
-              {role === 'organizer' 
-                ? 'Register an organization to host events, or join as a student.' 
+              {role === 'organizer'
+                ? 'Register an organization to host events, or join as a student.'
                 : 'Create your student account to discover and register for recitals.'}
             </p>
           </div>
 
-          {/* Custom Classical Switcher Toggle */}
           <div className="role-toggle-container">
             <button
               type="button"
@@ -79,7 +89,6 @@ export default function Register({ onBackToHome, onNavigateToLogin }: RegisterPr
             </button>
           </div>
 
-          {/* Dynamic Fields */}
           <form onSubmit={submit} className="register-form">
             {role === 'organizer' ? (
               <>
@@ -109,7 +118,7 @@ export default function Register({ onBackToHome, onNavigateToLogin }: RegisterPr
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="organizerName">Your name (organizer)</label>
+                  <label htmlFor="organizerName">Your name</label>
                   <input
                     id="organizerName"
                     type="text"
@@ -135,23 +144,12 @@ export default function Register({ onBackToHome, onNavigateToLogin }: RegisterPr
             )}
 
             <div className="form-group">
-              <label htmlFor="username">Username</label>
-              <input
-                id="username"
-                type="text"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Ivan"
-              />
-            </div>
-
-            <div className="form-group">
               <label htmlFor="email">Email</label>
               <input
                 id="email"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@school.edu"
@@ -164,22 +162,30 @@ export default function Register({ onBackToHome, onNavigateToLogin }: RegisterPr
                 id="password"
                 type="password"
                 required
+                minLength={8}
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="At least 8 characters"
               />
             </div>
 
-            <button type="submit" className="register-submit-btn">
-              {role === 'organizer' ? 'Create organization' : 'Create student account'}
+            {error && <div className="auth-message auth-message--error">{error}</div>}
+
+            <button type="submit" className="register-submit-btn" disabled={isSubmitting}>
+              {isSubmitting
+                ? 'Creating account...'
+                : role === 'organizer'
+                  ? 'Create organization'
+                  : 'Create student account'}
             </button>
           </form>
 
           <div className="register-footer">
             <span className="footer-text">Already have an account? </span>
-            <button 
-              type="button" 
-              className="signin-link" 
+            <button
+              type="button"
+              className="signin-link"
               onClick={onNavigateToLogin}
             >
               Sign in
@@ -188,12 +194,11 @@ export default function Register({ onBackToHome, onNavigateToLogin }: RegisterPr
         </div>
       </div>
 
-      {/* Right Column: Visual Art Side */}
       <div className="register-art-side">
         <div className="art-overlay">
           <div className="quote-container">
             <blockquote className="quote-text">
-              “For every harvest there is a hall, and for every hall a song.”
+              "For every harvest there is a hall, and for every hall a song."
             </blockquote>
             <cite className="quote-author">THE DEMETRA CREED</cite>
           </div>

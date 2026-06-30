@@ -363,6 +363,18 @@ body, html {
 .nav-right {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-user {
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav-center {
@@ -442,6 +454,12 @@ body, html {
 .app-container:has(.register-page-overlay) .nav-btn {
   background-color: #a79a0e !important;
   color: #ffffff !important;
+}
+
+.nav-container.scrolled .nav-user,
+.app-container:has(.dash-page) .nav-user,
+.app-container:has(.events-page-container) .nav-user {
+  color: #162a43;
 }
 
 

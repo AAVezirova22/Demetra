@@ -1,4 +1,4 @@
-import { PrismaClient, OutboxEventStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { createClient } from 'redis';
 
 const prisma = new PrismaClient();

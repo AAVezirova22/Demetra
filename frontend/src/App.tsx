@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
@@ -9,14 +9,24 @@ import ClickSpark from './ClickSpark';
 import Events from './Events';
 import Dashboard from './Dashboard';
 import Instruments from './Instruments';
+import { clearStoredAuth, fetchCurrentUser, getStoredAuth, storeAuth, type AuthUser } from './api';
 import './App.css';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
 export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments';
+const VIEW_KEY = 'demetra.currentView';
+
+function getStoredView(): AppView {
+  const value = localStorage.getItem(VIEW_KEY);
+  return value === 'home' || value === 'register' || value === 'login' || value === 'events' || value === 'dashboard' || value === 'instruments'
+    ? value
+    : 'home';
+}
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<AppView>('home');
+  const [currentView, setCurrentView] = useState<AppView>(() => getStoredView());
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => getStoredAuth()?.user ?? null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<SVGRectElement>(null);
@@ -68,6 +78,56 @@ export default function App() {
     return () => ctx.revert();
   }, [currentView]);
 
+  useEffect(() => {
+    const auth = getStoredAuth();
+    if (!auth) {
+      if (currentView === 'dashboard') setCurrentView('login');
+      return;
+    }
+
+    fetchCurrentUser(auth.token)
+      .then(({ user }) => {
+        setCurrentUser(user);
+        storeAuth({ token: auth.token, user });
+        if (currentView === 'dashboard' && user.role !== 'ORGANIZER') {
+          setCurrentView('events');
+        }
+      })
+      .catch(() => {
+        clearStoredAuth();
+        setCurrentUser(null);
+        if (currentView === 'dashboard') setCurrentView('login');
+      });
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(VIEW_KEY, currentView);
+  }, [currentView]);
+
+  const handleNavigate = (view: AppView) => {
+    if (view === 'dashboard' && !currentUser) {
+      setCurrentView('login');
+      return;
+    }
+    if (view === 'dashboard' && currentUser?.role !== 'ORGANIZER') {
+      setCurrentView('events');
+      return;
+    }
+
+    setCurrentView(view);
+  };
+
+  const handleAuthenticated = (user: AuthUser) => {
+    setCurrentUser(user);
+    setCurrentView(user.role === 'ORGANIZER' ? 'dashboard' : 'events');
+  };
+
+  const handleLogout = () => {
+    clearStoredAuth();
+    setCurrentUser(null);
+    setCurrentView('home');
+  };
+
   return (
     <ClickSpark sparkColor={currentView === 'home' ? "#ffffff" : "#e3cc9a"} sparkCount={10} sparkRadius={25} duration={500}>
       <div 
@@ -75,7 +135,12 @@ export default function App() {
         className="app-container" 
         style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh' }}
       >
-        <Navbar onNavigate={(view) => setCurrentView(view)} currentView={currentView} />
+        <Navbar
+          onNavigate={handleNavigate}
+          currentView={currentView}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+        />
 
         {currentView === 'home' && (
           <>
@@ -140,6 +205,7 @@ export default function App() {
           <Register 
             onBackToHome={() => setCurrentView('home')} 
             onNavigateToLogin={() => setCurrentView('login')} 
+            onAuthenticated={handleAuthenticated}
           />
         )}
 
@@ -147,6 +213,7 @@ export default function App() {
           <Login 
             onBackToHome={() => setCurrentView('home')} 
             onNavigateToRegister={() => setCurrentView('register')}
+            onAuthenticated={handleAuthenticated}
           />
         )}
 
@@ -163,6 +230,7 @@ export default function App() {
         {currentView === 'dashboard' && (
           <Dashboard 
             onNavigate={(view) => setCurrentView(view)}
+            currentUser={currentUser}
           />
         )}
       </div>

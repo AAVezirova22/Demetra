@@ -1,11 +1,12 @@
-import { useState } from 'react';
+﻿import { useEffect, useState } from 'react';
+import { getStoredAuth, listEvents, registerForEvent } from './api';
 
 interface EventsProps {
   onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard') => void;
 }
 
 interface Event {
-  id: number;
+  id: string;
   title: string;
   category: string;
   date: string;
@@ -27,170 +28,69 @@ interface Event {
   tags: string[];
 }
 
-const MOCK_EVENTS: Event[] = [
-  {
-    id: 1,
-    title: 'Spring Symphony Concert',
-    category: 'Concert',
-    date: 'July 12, 2026',
-    time: '19:00',
-    location: 'Grand Hall, Sofia',
-    venue: 'National Music Academy',
-    description: 'An evening of Romantic-era masterworks performed by the Academy\'s Symphony Orchestra.',
-    longDescription: 'Join us for an unforgettable evening as the National Music Academy Symphony Orchestra presents a programme of late Romantic masterworks. Under the baton of Maestro Petrov, the ensemble will perform Brahms\' Symphony No. 4 alongside Rachmaninoff\'s Piano Concerto No. 2, featuring soloist Elena Vassileva. This concert marks the culmination of the academy\'s spring semester and celebrates the exceptional talent of our students and faculty.',
-    capacity: 320,
-    registered: 289,
-    price: '€12',
-    status: 'almost-full',
-    gradient: 'linear-gradient(135deg, #1a2a4a 0%, #2d4a7a 60%, #162a43 100%)',
-    emoji: '🎻',
-    organizer: 'National Music Academy',
-    organizerType: 'Music School',
-    program: [
-      { time: '19:00', piece: 'Brahms – Academic Festival Overture', performer: 'Symphony Orchestra' },
-      { time: '19:25', piece: 'Rachmaninoff – Piano Concerto No. 2', performer: 'Elena Vassileva, piano' },
-      { time: '20:20', piece: 'Intermission', performer: '' },
-      { time: '20:40', piece: 'Brahms – Symphony No. 4', performer: 'Symphony Orchestra' },
-    ],
-    venueLayout: 'concert-hall',
-    tags: ['Orchestra', 'Classical', 'Brahms', 'Rachmaninoff'],
-  },
-  {
-    id: 2,
-    title: 'Jazz Under the Stars',
-    category: 'Workshop',
-    date: 'July 19, 2026',
-    time: '20:30',
-    location: 'Borisova Gradina, Sofia',
-    venue: 'Open-air Amphitheater',
-    description: 'An outdoor jazz night featuring student ensembles and a masterclass from guest artist Marco Ricci.',
-    longDescription: 'Spend a summer evening under the open sky with some of the most exciting jazz talent from the Demetra community. Four student ensembles will take the stage, each performing original compositions alongside jazz standards reimagined through a classical lens. Italian saxophonist Marco Ricci will close the evening with a special performance, followed by an open Q&A session for aspiring musicians.',
-    capacity: 150,
-    registered: 61,
-    price: 'Free',
-    status: 'open',
-    gradient: 'linear-gradient(135deg, #1c2b1a 0%, #2d4a2a 60%, #1a3a18 100%)',
-    emoji: '🎷',
-    organizer: 'Sofia Jazz Collective',
-    organizerType: 'Music Club',
-    program: [
-      { time: '20:30', piece: 'Student Quartet I – Original Compositions', performer: 'Ensemble Aurum' },
-      { time: '21:00', piece: 'Student Quartet II – Standards Set', performer: 'Blue Note Trio +1' },
-      { time: '21:30', piece: 'Special Performance & Masterclass', performer: 'Marco Ricci, saxophone' },
-    ],
-    venueLayout: 'outdoor',
-    tags: ['Jazz', 'Outdoor', 'Masterclass', 'Free'],
-  },
-  {
-    id: 3,
-    title: 'Piano Masterclass: Chopin Études',
-    category: 'Masterclass',
-    date: 'July 24, 2026',
-    time: '10:00',
-    location: 'Studio B, Conservatory',
-    venue: 'Plovdiv Conservatory',
-    description: 'Intensive half-day session with Prof. Karolina Nowak, focusing on the technical and expressive demands of Chopin\'s Études.',
-    longDescription: 'This intimate masterclass offers a rare opportunity to study directly with Professor Karolina Nowak of the Warsaw Chopin Institute. Four selected students will perform études from Op. 10 and Op. 25, receiving detailed feedback in front of an audience of observers. The session concludes with a 45-minute open discussion on practise methodology, finger technique, and musical storytelling. Observer seats are limited — register early.',
-    capacity: 40,
-    registered: 40,
-    price: '€8',
-    status: 'full',
-    gradient: 'linear-gradient(135deg, #2a1a1a 0%, #4a2020 60%, #3a1010 100%)',
-    emoji: '🎹',
-    organizer: 'Plovdiv Conservatory',
-    organizerType: 'Music School',
-    program: [
-      { time: '10:00', piece: 'Chopin – Étude Op. 10 No. 1', performer: 'Student: Dimitar Petrov' },
-      { time: '10:45', piece: 'Chopin – Étude Op. 10 No. 4', performer: 'Student: Maria Georgieva' },
-      { time: '11:30', piece: 'Chopin – Étude Op. 25 No. 11 "Winter Wind"', performer: 'Student: Teodora Ivanova' },
-      { time: '12:15', piece: 'Open Discussion & Q&A', performer: 'Prof. Karolina Nowak' },
-    ],
-    venueLayout: 'classroom',
-    tags: ['Piano', 'Chopin', 'Masterclass', 'Intensive'],
-  },
-  {
-    id: 4,
-    title: 'Baroque Ensemble Workshop',
-    category: 'Workshop',
-    date: 'August 3, 2026',
-    time: '14:00',
-    location: 'Varna Palace of Culture',
-    venue: 'Chamber Hall',
-    description: 'A collaborative afternoon workshop exploring historically informed performance of Baroque chamber music.',
-    longDescription: 'Dive into the world of Baroque performance practice in this hands-on ensemble workshop. Participants will work through movements from Vivaldi\'s concerti grossi and Bach\'s Brandenburg Concertos, exploring ornamentation, basso continuo realisation, and period-appropriate articulation. The session is led by harpsichordist Dr. Nadia Stefanova and is open to players of any Baroque instrument. Bring your instrument and your curiosity.',
-    capacity: 25,
-    registered: 14,
-    price: '€6',
-    status: 'open',
-    gradient: 'linear-gradient(135deg, #1a1a2a 0%, #2a2050 60%, #1a1540 100%)',
-    emoji: '🎼',
-    organizer: 'Varna Early Music Society',
-    organizerType: 'Music Club',
-    program: [
-      { time: '14:00', piece: 'Vivaldi – Concerto Grosso Op. 3 No. 8', performer: 'Ensemble participants' },
-      { time: '15:15', piece: 'Bach – Brandenburg Concerto No. 3', performer: 'Ensemble participants' },
-      { time: '16:30', piece: 'Ornamentation & continuo practise', performer: 'Dr. Nadia Stefanova, hpsd' },
-    ],
-    venueLayout: 'concert-hall',
-    tags: ['Baroque', 'Chamber', 'Workshop', 'Early Music'],
-  },
-  {
-    id: 5,
-    title: 'Student Recital Night',
-    category: 'Recital',
-    date: 'June 14, 2026',
-    time: '18:00',
-    location: 'Main Hall, Academy',
-    venue: 'National Music Academy',
-    description: 'End-of-year student recital showcasing the finest performers from this academic year.',
-    longDescription: 'The annual end-of-year student recital brings together the top graduates and advancing students from across the academy\'s departments. From violin to voice, piano to percussion, this evening showcases the depth of talent nurtured through the year. Families, friends, and music lovers are warmly invited.',
-    capacity: 200,
-    registered: 200,
-    price: 'Free',
-    status: 'past',
-    gradient: 'linear-gradient(135deg, #2a2a2a 0%, #404040 60%, #1a1a1a 100%)',
-    emoji: '🎵',
-    organizer: 'National Music Academy',
-    organizerType: 'Music School',
-    program: [
-      { time: '18:00', piece: 'Violin: Mendelssohn Concerto, Mvt. I', performer: 'Anna Kostadinova' },
-      { time: '18:25', piece: 'Voice: Schubert Lieder Selection', performer: 'Hristo Nikolov, baritone' },
-      { time: '18:55', piece: 'Piano: Beethoven Sonata Op. 57 "Appassionata"', performer: 'Galina Todorova' },
-    ],
-    venueLayout: 'concert-hall',
-    tags: ['Recital', 'Students', 'Graduation', 'Mixed'],
-  },
-  {
-    id: 6,
-    title: 'Music Theory Symposium',
-    category: 'Lecture',
-    date: 'August 15, 2026',
-    time: '09:30',
-    location: 'Lecture Hall 3, Conservatory',
-    venue: 'Sofia Conservatory',
-    description: 'A one-day academic symposium on post-tonal theory, with presentations from scholars across Eastern Europe.',
-    longDescription: 'The annual Music Theory Symposium gathers scholars, students, and practitioners to discuss developments in contemporary music theory. This year\'s theme is "Voice Leading Beyond Tonality," with presentations covering Messiaen\'s modes, spectral music analysis, and algorithmic composition. The day includes three keynote talks, four short paper sessions, and an evening panel discussion.',
-    capacity: 80,
-    registered: 45,
-    price: '€15',
-    status: 'open',
-    gradient: 'linear-gradient(135deg, #1a2020 0%, #203030 60%, #102020 100%)',
-    emoji: '📜',
-    organizer: 'Sofia Conservatory',
-    organizerType: 'Music School',
-    program: [
-      { time: '09:30', piece: 'Keynote: "Spectral Harmony in Practice"', performer: 'Prof. Ioan Ciobanu' },
-      { time: '11:00', piece: 'Short Papers Session I', performer: 'Multiple presenters' },
-      { time: '14:00', piece: 'Keynote: "Algorithmic Composition Today"', performer: 'Dr. Petra Horak' },
-      { time: '17:00', piece: 'Panel Discussion', performer: 'All speakers' },
-    ],
-    venueLayout: 'classroom',
-    tags: ['Theory', 'Academic', 'Lecture', 'Symposium'],
-  },
+const EVENT_VISUALS = [
+  { gradient: 'linear-gradient(135deg, #1a2a4a 0%, #2d4a7a 60%, #162a43 100%)', emoji: '♪', layout: 'concert-hall' as const },
+  { gradient: 'linear-gradient(135deg, #1c2b1a 0%, #2d4a2a 60%, #1a3a18 100%)', emoji: '♬', layout: 'outdoor' as const },
+  { gradient: 'linear-gradient(135deg, #2a1a1a 0%, #4a2020 60%, #3a1010 100%)', emoji: '♩', layout: 'classroom' as const },
+  { gradient: 'linear-gradient(135deg, #1a1a2a 0%, #2a2050 60%, #1a1540 100%)', emoji: '♫', layout: 'concert-hall' as const },
 ];
 
-// ── Venue layout SVG renderers ──────────────────────────────────────────────
+function titleCaseEnum(value: string | undefined) {
+  if (!value) return 'Organizer';
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
 
+function formatDate(value: string | null) {
+  if (!value) return 'Date TBA';
+  return new Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(value));
+}
+
+function formatTime(value: string | null) {
+  if (!value) return 'Time TBA';
+  return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+}
+
+function mapApiEvent(event: import('./api').EventRecord, index: number): Event {
+  const visual = EVENT_VISUALS[index % EVENT_VISUALS.length]!;
+  const registered = event.registered ?? 0;
+  const capacity = Math.max(event.capacity, 1);
+  const startsAt = event.startsAt ? new Date(event.startsAt) : null;
+  const isPast = startsAt ? startsAt.getTime() < Date.now() : false;
+  const isFull = registered >= capacity;
+  const fill = registered / capacity;
+  const category = event.category ?? 'Event';
+  const organizer = event.organization?.name ?? event.organizer?.name ?? 'Demetra Organizer';
+  const description = event.description || 'Event details will be announced soon.';
+
+  return {
+    id: event.id,
+    title: event.title,
+    category,
+    date: formatDate(event.startsAt),
+    time: formatTime(event.startsAt),
+    location: event.location ?? 'Location TBA',
+    venue: event.organization?.name ?? event.location ?? 'Venue TBA',
+    description,
+    longDescription: description,
+    capacity,
+    registered,
+    price: 'Free',
+    status: isPast ? 'past' : isFull ? 'full' : fill > 0.85 ? 'almost-full' : 'open',
+    gradient: visual.gradient,
+    emoji: visual.emoji,
+    organizer,
+    organizerType: titleCaseEnum(event.organization?.kind),
+    program: [],
+    venueLayout: visual.layout,
+    tags: [category, event.status],
+  };
+}
+
+// Event venue layout SVG renderers
 function ConcertHallLayout({ capacity, registered }: { capacity: number; registered: number }) {
   const rows = [
     { id: 'A', seats: 12, y: 80 },
@@ -335,21 +235,33 @@ function ClassroomLayout({ capacity, registered }: { capacity: number; registere
   );
 }
 
-// ── Event Detail Page ────────────────────────────────────────────────────────
+// в”Ђв”Ђ Event Detail Page в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
-function EventDetail({ event, onBack }: { event: Event; onBack: () => void }) {
+function EventDetail({ event, onBack, onNavigate, onRegistered }: { event: Event; onBack: () => void; onNavigate: EventsProps['onNavigate']; onRegistered: (eventId: string, status: 'CONFIRMED' | 'WAITLISTED' | 'CANCELLED') => void }) {
   const [joinState, setJoinState] = useState<'idle' | 'joining' | 'joined' | 'waitlist'>('idle');
+  const [joinError, setJoinError] = useState('');
   const isFull = event.registered >= event.capacity;
   const isPast = event.status === 'past';
   const pct = Math.round((event.registered / event.capacity) * 100);
 
-  const handleJoin = () => {
-    setJoinState('joining');
-    setTimeout(() => {
-      setJoinState(isFull ? 'waitlist' : 'joined');
-    }, 1200);
-  };
+  const handleJoin = async () => {
+    const auth = getStoredAuth();
+    if (!auth) {
+      onNavigate('login');
+      return;
+    }
 
+    setJoinState('joining');
+    setJoinError('');
+    try {
+      const { registration } = await registerForEvent(auth.token, event.id);
+      setJoinState(registration.status === 'WAITLISTED' ? 'waitlist' : 'joined');
+      onRegistered(event.id, registration.status);
+    } catch (err) {
+      setJoinState('idle');
+      setJoinError(err instanceof Error ? err.message : 'Could not register for this event.');
+    }
+  };
   const renderLayout = () => {
     switch (event.venueLayout) {
       case 'concert-hall': return <ConcertHallLayout capacity={event.capacity} registered={event.registered} />;
@@ -373,9 +285,9 @@ function EventDetail({ event, onBack }: { event: Event; onBack: () => void }) {
           <div className="event-detail-tag">{event.category}</div>
           <h1 className="event-detail-title">{event.title}</h1>
           <div className="event-detail-meta-row">
-            <span>📅 {event.date} · {event.time}</span>
-            <span>📍 {event.location}</span>
-            <span>🏛️ {event.venue}</span>
+            <span>рџ“… {event.date} В· {event.time}</span>
+            <span>рџ“Ќ {event.location}</span>
+            <span>рџЏ›пёЏ {event.venue}</span>
           </div>
         </div>
         <div className="event-detail-hero-emoji">{event.emoji}</div>
@@ -402,7 +314,7 @@ function EventDetail({ event, onBack }: { event: Event; onBack: () => void }) {
             <div className="programme-list">
               {event.program.map((item, i) => (
                 item.performer === '' ? (
-                  <div key={i} className="programme-intermission">— Intermission —</div>
+                  <div key={i} className="programme-intermission">вЂ” Intermission вЂ”</div>
                 ) : (
                   <div key={i} className="programme-item">
                     <div className="programme-time">{item.time}</div>
@@ -483,11 +395,11 @@ function EventDetail({ event, onBack }: { event: Event; onBack: () => void }) {
               <button className="join-btn join-btn--past" disabled>Event has passed</button>
             ) : joinState === 'joined' ? (
               <div className="join-success">
-                <span>✓</span> You're registered!
+                <span>вњ“</span> You're registered!
               </div>
             ) : joinState === 'waitlist' ? (
               <div className="join-success join-success--waitlist">
-                <span>⏳</span> Added to waitlist
+                <span>вЏі</span> Added to waitlist
               </div>
             ) : (
               <button
@@ -504,6 +416,8 @@ function EventDetail({ event, onBack }: { event: Event; onBack: () => void }) {
                 )}
               </button>
             )}
+
+            {joinError && <p className="join-waitlist-note" style={{ color: '#e53e3e' }}>{joinError}</p>}
 
             {isFull && joinState === 'idle' && (
               <p className="join-waitlist-note">This event is full. You'll be notified if a spot opens.</p>
@@ -522,17 +436,41 @@ function EventDetail({ event, onBack }: { event: Event; onBack: () => void }) {
   );
 }
 
-// ── Events List Page ─────────────────────────────────────────────────────────
+// в”Ђв”Ђ Events List Page в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
-export default function Events({ onNavigate: _onNavigate }: EventsProps) {
+export default function Events({ onNavigate }: EventsProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'past'>('all');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [eventsError, setEventsError] = useState('');
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
-  const categories = ['All', 'Concert', 'Workshop', 'Masterclass', 'Lecture', 'Recital'];
+  useEffect(() => {
+    let cancelled = false;
+    listEvents()
+      .then(({ events }) => {
+        if (cancelled) return;
+        setEvents(events.map(mapApiEvent));
+        setEventsError('');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setEventsError(err instanceof Error ? err.message : 'Could not load events.');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
 
-  const filtered = MOCK_EVENTS.filter((ev) => {
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const categories = ['All', ...Array.from(new Set(events.map(event => event.category))).sort()];
+
+  const filtered = events.filter((ev) => {
     if (activeTab === 'upcoming' && ev.status === 'past') return false;
     if (activeTab === 'past' && ev.status !== 'past') return false;
     if (categoryFilter !== 'All' && ev.category !== categoryFilter) return false;
@@ -541,26 +479,31 @@ export default function Events({ onNavigate: _onNavigate }: EventsProps) {
     return true;
   });
 
-  const upcomingCount = MOCK_EVENTS.filter(e => e.status !== 'past').length;
-  const pastCount = MOCK_EVENTS.filter(e => e.status === 'past').length;
+  const upcomingCount = events.filter(e => e.status !== 'past').length;
+  const pastCount = events.filter(e => e.status === 'past').length;
+  const selectedEvent = selectedEventId ? events.find(event => event.id === selectedEventId) ?? null : null;
+
+  const handleRegistered = (eventId: string, status: 'CONFIRMED' | 'WAITLISTED' | 'CANCELLED') => {
+    if (status !== 'CONFIRMED') return;
+    setEvents(prev => prev.map(event => event.id === eventId ? { ...event, registered: Math.min(event.capacity, event.registered + 1) } : event));
+  };
 
   if (selectedEvent) {
-    return <EventDetail event={selectedEvent} onBack={() => setSelectedEvent(null)} />;
+    return <EventDetail event={selectedEvent} onBack={() => setSelectedEventId(null)} onNavigate={onNavigate} onRegistered={handleRegistered} />;
   }
-
   return (
     <div className="events-page-container page-transition-container">
       <div className="events-content-wrapper">
         {/* Header */}
         <header className="events-header">
-          <div className="events-breadcrumbs">Demetra · Events</div>
+          <div className="events-breadcrumbs">Demetra В· Events</div>
           <h1 className="events-main-title">Musical Events</h1>
         </header>
 
         {/* Controls */}
         <div className="events-controls-row">
           <div className="events-tabs">
-            {([['all', 'All', MOCK_EVENTS.length], ['upcoming', 'Upcoming', upcomingCount], ['past', 'Past', pastCount]] as const).map(
+            {([['all', 'All', events.length], ['upcoming', 'Upcoming', upcomingCount], ['past', 'Past', pastCount]] as const).map(
               ([key, label, count]) => (
                 <button
                   key={key}
@@ -582,7 +525,7 @@ export default function Events({ onNavigate: _onNavigate }: EventsProps) {
               </svg>
               <input
                 type="text"
-                placeholder="Search events…"
+                placeholder="Search eventsвЂ¦"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -601,8 +544,8 @@ export default function Events({ onNavigate: _onNavigate }: EventsProps) {
         <div className="events-grid">
           {filtered.length === 0 ? (
             <div className="no-events-state">
-              <div style={{ fontSize: 40, marginBottom: 12 }}>🎵</div>
-              No events match your search.
+              <div style={{ fontSize: 40, marginBottom: 12 }}>рџЋµ</div>
+              {isLoading ? 'Loading events...' : eventsError || 'No events match your search.'}
             </div>
           ) : (
             filtered.map(ev => {
@@ -611,7 +554,7 @@ export default function Events({ onNavigate: _onNavigate }: EventsProps) {
                 <article
                   key={ev.id}
                   className={`event-card ${ev.status === 'past' ? 'event-card--past' : ''}`}
-                  onClick={() => setSelectedEvent(ev)}
+                  onClick={() => setSelectedEventId(ev.id)}
                   style={{ cursor: 'pointer' }}
                 >
                   <div
@@ -629,7 +572,7 @@ export default function Events({ onNavigate: _onNavigate }: EventsProps) {
                     <div className="event-card-emoji">{ev.emoji}</div>
                   </div>
                   <div className="event-card-body">
-                    <div className="event-date">{ev.date} · {ev.time}</div>
+                    <div className="event-date">{ev.date} В· {ev.time}</div>
                     <h3 className="event-title">{ev.title}</h3>
                     <div className="event-location">
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -663,3 +606,6 @@ export default function Events({ onNavigate: _onNavigate }: EventsProps) {
     </div>
   );
 }
+
+
+
