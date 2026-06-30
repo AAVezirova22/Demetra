@@ -1,183 +1,222 @@
 /* Base Page Split Container */
 .register-container {
-    display: flex;
-    min-height: 100vh;
-    width: 100%;
-  }
-  
-  /* Left Form Layout */
-  .register-form-side {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    padding: 40px;
-    max-width: 600px;
-    justify-content: center;
-    position: relative;
-  }
-  
-  /* Brand Token Placement */
-  .register-brand {
-    position: absolute;
-    top: 40px;
-    left: 40px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    font-weight: 600;
-  }
-  
-  .register-card {
-    width: 100%;
-    max-width: 400px;
-    margin: 60px auto 0 auto;
-    background: transparent !important;
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Left Form Layout */
+.register-form-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 40px;
+  max-width: 600px;
+  justify-content: center;
+  position: relative;
+}
+
+/* Brand Token Placement */
+.register-brand {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.register-card {
+  width: 100%;
+  max-width: 400px;
+  margin: 60px auto 0 auto;
+  background: transparent !important;
   box-shadow: none !important;
   border: none !important;
   padding: 0 !important;
-  }
-  
-  /* Right Art Side with Image background */
+}
+
+/* Right Art Side with Image background */
+.register-art-side {
+  flex: 1;
+  background-image: url('https://cdn.discordapp.com/attachments/1021731951708741644/1519432787936018562/image-from-rawpixel-id-5960236-jpeg.jpg?ex=6a3d898e&is=6a3c380e&hm=7a5eb5cd19ac400b4b6d45801b2c0000984b79b4b05357b58a6de1d068895bcf&'); /* Replace with image asset link */
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: none; /* Hidden on mobile viewports */
+}
+
+@media (min-width: 1024px) {
   .register-art-side {
-    flex: 1;
-    background-image: url('https://cdn.discordapp.com/attachments/1021731951708741644/1519432787936018562/image-from-rawpixel-id-5960236-jpeg.jpg?ex=6a3d898e&is=6a3c380e&hm=7a5eb5cd19ac400b4b6d45801b2c0000984b79b4b05357b58a6de1d068895bcf&'); /* Replace with image asset link */
-    background-size: cover;
-    background-position: center;
-    position: relative;
-    display: none; /* Hidden on mobile viewports */
-  }
-  
-  @media (min-width: 1024px) {
-    .register-art-side {
-      display: block;
-    }
-  }
-  
-  /* Quote Layout positioning */
-  .art-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 100%);
-    display: flex;
-    align-items: flex-end;
-    padding: 60px;
-  }
-  
-  .quote-container {
-    color: #ffffff;
-    max-width: 500px;
-  }
-  
-  .quote-text {
-    font-size: 2rem;
-    line-height: 1.3;
-    margin-bottom: 12px;
-    font-family: inherit;
-  }
-  
-  .quote-author {
-    font-size: 0.75rem;
-    letter-spacing: 0.15em;
-    opacity: 0.8;
-    text-transform: uppercase;
-    font-style: normal;
     display: block;
   }
-  
-  /* Inline Switcher & Footer links alignment */
-  .register-footer {
-    margin-top: 24px;
-    text-align: center;
-    font-size: 0.875rem;
-  }
-  
-  .signin-link {
-    background: none;
-    border: none;
-    text-decoration: underline;
-    cursor: pointer;
-    padding: 0;
-    font-weight: 500;
-    color: inherit;
-  }
+}
 
-  .auth-message {
-    border-radius: 8px;
-    font-size: 0.875rem;
-    line-height: 1.4;
-    padding: 10px 12px;
-  }
+/* Quote Layout positioning */
+.art-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 100%);
+  display: flex;
+  align-items: flex-end;
+  padding: 60px;
+}
 
-  .auth-message--error {
-    background: rgba(190, 18, 60, 0.08);
-    border: 1px solid rgba(190, 18, 60, 0.22);
-    color: #9f1239;
-  }
+.quote-container {
+  color: #ffffff;
+  max-width: 500px;
+}
 
-  .register-submit-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
-  }
+.quote-text {
+  font-size: 2rem;
+  line-height: 1.3;
+  margin-bottom: 12px;
+  font-family: inherit;
+}
 
-  .register-secondary-btn {
-    width: 100%;
-    margin-top: 10px;
-    padding: 12px 16px;
-    border: 1px solid rgba(22,42,67,0.16);
-    border-radius: 8px;
-    background: #ffffff;
-    color: #162a43;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease;
-  }
+.quote-author {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  opacity: 0.8;
+  text-transform: uppercase;
+  font-style: normal;
+  display: block;
+}
 
-  .register-secondary-btn:hover {
-    background: rgba(22,42,67,0.04);
-    border-color: rgba(22,42,67,0.28);
-  }
+/* Inline Switcher & Footer links alignment */
+.register-footer {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 0.875rem;
+}
 
-  .invite-join-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 16px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(22,42,67,0.1);
-    border-radius: 8px;
-    background: rgba(22,42,67,0.03);
-  }
+.signin-link {
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 500;
+  color: inherit;
+}
 
-  .invite-join-label {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    color: #8a9aad;
-    margin-bottom: 5px;
-  }
+.auth-message {
+  border-radius: 8px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  padding: 10px 12px;
+}
 
-  .invite-join-title {
-    font-family: 'Cinzel', serif;
-    font-size: 18px;
-    font-weight: 700;
-    color: #162a43;
-  }
+.auth-message--error {
+  background: rgba(190, 18, 60, 0.08);
+  border: 1px solid rgba(190, 18, 60, 0.22);
+  color: #9f1239;
+}
 
-  .invite-join-meta {
-    margin-top: 3px;
-    font-size: 12px;
-    color: #607288;
-  }
+.register-submit-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
 
-  .invite-join-role {
-    flex-shrink: 0;
-    padding: 7px 10px;
-    border-radius: 999px;
-    background: rgba(167,154,14,0.1);
-    color: rgb(136,126,12);
-    font-size: 12px;
-    font-weight: 700;
-  }
+.register-secondary-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 16px;
+  border: 1px solid rgba(22,42,67,0.16);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #162a43;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.register-secondary-btn:hover {
+  background: rgba(22,42,67,0.04);
+  border-color: rgba(22,42,67,0.28);
+}
+
+.invite-join-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(22,42,67,0.1);
+  border-radius: 8px;
+  background: rgba(22,42,67,0.03);
+}
+
+.invite-join-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #8a9aad;
+  margin-bottom: 5px;
+}
+
+.invite-join-title {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #162a43;
+}
+
+.invite-join-meta {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #607288;
+}
+
+.invite-join-role {
+  flex-shrink: 0;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(167,154,14,0.1);
+  color: rgb(136,126,12);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.form-group label.required-label::after {
+  content: '*';
+  color: #9f1239;
+  font-size: 0.875rem;
+  margin-left: 2px;
+}
+
+.password-input-container {
+  position: relative;
+}
+
+.password-input-container input {
+  padding-right: 30px;
+  height: 40px; /* specify the height */
+}
+
+.password-toggle-btn {
+  position: absolute;
+  top: 55%;
+  transform: translateY(-50%);
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.password-toggle-btn svg {
+  color: #607288;
+}

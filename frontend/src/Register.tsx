@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './Register.css';
-import { Building2, GraduationCap } from 'lucide-react';
+import { Building2, GraduationCap, Eye, EyeOff } from 'lucide-react';
 import { registerUser, storeAuth, type AuthUser } from './api';
 
 const orgKinds = [
@@ -28,6 +28,7 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,27 +74,29 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
           <div className="role-toggle-container">
             <button
               type="button"
-              onClick={() => setRole('organizer')}
-              className={`role-toggle-btn ${role === 'organizer' ? 'active' : ''}`}
-            >
-              <Building2 size={14} />
-              Organization
-            </button>
-            <button
-              type="button"
               onClick={() => setRole('student')}
               className={`role-toggle-btn ${role === 'student' ? 'active' : ''}`}
             >
               <GraduationCap size={14} />
               Student
             </button>
+            
+            <button
+              type="button"
+              onClick={() => setRole('organizer')}
+              className={`role-toggle-btn ${role === 'organizer' ? 'active' : ''}`}
+            >
+              <Building2 size={14} />
+              Organization
+            </button>
+            
           </div>
 
           <form onSubmit={submit} className="register-form">
             {role === 'organizer' ? (
               <>
                 <div className="form-group">
-                  <label htmlFor="orgName">Organization name</label>
+                  <label htmlFor="orgName" className="required-label">Organization name</label>
                   <input
                     id="orgName"
                     type="text"
@@ -105,11 +108,12 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="kind">Type of organization</label>
+                  <label htmlFor="kind" className="required-label">Type of organization</label>
                   <select
                     id="kind"
                     value={kind}
                     onChange={(e) => setKind(e.target.value)}
+                    required
                   >
                     {orgKinds.map((k) => (
                       <option key={k} value={k}>{k}</option>
@@ -118,7 +122,7 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="organizerName">Your name</label>
+                  <label htmlFor="organizerName" className="required-label">Your name</label>
                   <input
                     id="organizerName"
                     type="text"
@@ -131,7 +135,7 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
               </>
             ) : (
               <div className="form-group">
-                <label htmlFor="name">Full name</label>
+                <label htmlFor="name" className="required-label">Full name</label>
                 <input
                   id="name"
                   type="text"
@@ -144,7 +148,7 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
             )}
 
             <div className="form-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email" className="required-label">Email</label>
               <input
                 id="email"
                 type="email"
@@ -157,17 +161,26 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
             </div>
 
             <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                required
-                minLength={8}
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
-              />
+              <label htmlFor="password" className="required-label">Password</label>
+              <div className="password-input-container">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
             </div>
 
             {error && <div className="auth-message auth-message--error">{error}</div>}
