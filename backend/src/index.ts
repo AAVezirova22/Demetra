@@ -161,6 +161,37 @@ type ProfileInput =
   | { error: string }
   | { displayName: string | null; profile: Omit<StoredUserProfile, 'userId'> };
 
+type SeatStatus = 'available' | 'taken' | 'selected' | 'vip' | 'blocked';
+type StageSeat = {
+  id: string;
+  row: number;
+  col: number;
+  status: SeatStatus;
+};
+type StoredStageLayout = {
+  id: string;
+  name: string;
+  venue: string | null;
+  rows: number;
+  cols: number;
+  seats: string | StageSeat[];
+  stageShape: 'rect' | 'arc' | 'thrust';
+  organizationId: string;
+  createdById: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+type StageLayoutInput =
+  | { error: string }
+  | {
+      name: string;
+      venue: string | null;
+      rows: number;
+      cols: number;
+      seats: StageSeat[];
+      stageShape: 'rect' | 'arc' | 'thrust';
+    };
+
 function base64Url(input: Buffer | string) {
   return Buffer.from(input).toString('base64url');
 }
@@ -443,6 +474,50 @@ function parseProfileInput(body: any): ProfileInput {
   };
 }
 
+function isSeatStatus(value: unknown): value is SeatStatus {
+  return value === 'available' || value === 'taken' || value === 'selected' || value === 'vip' || value === 'blocked';
+}
+
+function parseStageLayoutInput(body: any): StageLayoutInput {
+  const name = typeof body.name === 'string' ? body.name.trim().replace(/\s+/g, ' ') : '';
+  const venue = typeof body.venue === 'string' ? body.venue.trim().replace(/\s+/g, ' ') : '';
+  const rows = Number(body.rows);
+  const cols = Number(body.cols);
+  const stageShape = body.stageShape === 'arc' || body.stageShape === 'thrust' ? body.stageShape : 'rect';
+
+  if (name.length < 2 || name.length > 120) return { error: 'Layout name must be between 2 and 120 characters.' };
+  if (venue.length > 180) return { error: 'Venue must be 180 characters or less.' };
+  if (!Number.isInteger(rows) || rows < 2 || rows > 20) return { error: 'Rows must be between 2 and 20.' };
+  if (!Number.isInteger(cols) || cols < 4 || cols > 24) return { error: 'Columns must be between 4 and 24.' };
+  if (!Array.isArray(body.seats) || body.seats.length !== rows * cols) return { error: 'Seat map does not match the selected rows and columns.' };
+
+  const seats: Array<StageSeat | null> = body.seats.map((seat: any): StageSeat | null => {
+    const row = Number(seat?.row);
+    const col = Number(seat?.col);
+    const status = seat?.status;
+    if (!Number.isInteger(row) || row < 0 || row >= rows) return null;
+    if (!Number.isInteger(col) || col < 0 || col >= cols) return null;
+    if (!isSeatStatus(status)) return null;
+    return {
+      id: `${row}-${col}`,
+      row,
+      col,
+      status,
+    };
+  });
+
+  if (seats.some((seat) => seat === null)) return { error: 'Seat map contains invalid seats.' };
+
+  return {
+    name,
+    venue: venue || null,
+    rows,
+    cols,
+    seats: seats as StageSeat[],
+    stageShape,
+  };
+}
+
 function publicProfile(user: {
   name: string;
   role: Role;
@@ -479,6 +554,45 @@ async function ensureUserProfileTable() {
       CONSTRAINT \`UserProfile_userId_fkey\` FOREIGN KEY (\`userId\`) REFERENCES \`User\`(\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
     )
   `;
+}
+
+async function ensureStageLayoutTable() {
+  await prisma.$executeRaw`
+    CREATE TABLE IF NOT EXISTS \`StageLayout\` (
+      \`id\` VARCHAR(191) NOT NULL,
+      \`name\` VARCHAR(191) NOT NULL,
+      \`venue\` VARCHAR(191) NULL,
+      \`rows\` INTEGER NOT NULL,
+      \`cols\` INTEGER NOT NULL,
+      \`seats\` JSON NOT NULL,
+      \`stageShape\` VARCHAR(191) NOT NULL,
+      \`organizationId\` VARCHAR(191) NOT NULL,
+      \`createdById\` VARCHAR(191) NOT NULL,
+      \`createdAt\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      \`updatedAt\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+      PRIMARY KEY (\`id\`),
+      INDEX \`StageLayout_organizationId_createdAt_idx\`(\`organizationId\`, \`createdAt\`),
+      INDEX \`StageLayout_createdById_idx\`(\`createdById\`),
+      CONSTRAINT \`StageLayout_organizationId_fkey\` FOREIGN KEY (\`organizationId\`) REFERENCES \`Organization\`(\`id\`) ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT \`StageLayout_createdById_fkey\` FOREIGN KEY (\`createdById\`) REFERENCES \`User\`(\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+    )
+  `;
+}
+
+function publicStageLayout(layout: StoredStageLayout) {
+  const parsedSeats = typeof layout.seats === 'string' ? JSON.parse(layout.seats) : layout.seats;
+
+  return {
+    id: layout.id,
+    name: layout.name,
+    venue: layout.venue ?? '',
+    rows: layout.rows,
+    cols: layout.cols,
+    seats: parsedSeats,
+    stageShape: layout.stageShape,
+    createdAt: layout.createdAt,
+    updatedAt: layout.updatedAt,
+  };
 }
 
 async function getProfilesByUserIds(userIds: string[]) {
@@ -959,6 +1073,100 @@ app.post('/api/notifications/read-all', requireAuth, async (req, res) => {
   res.json({ success: true });
 });
 
+app.get('/api/stage-layouts', requireAuth, async (req, res) => {
+  const access = await getUserOrganizationAccess(req.user!.sub);
+  if (!access) return res.status(404).json({ error: 'Organization not found.' });
+
+  const layouts = await prisma.$queryRaw<StoredStageLayout[]>`
+    SELECT \`id\`, \`name\`, \`venue\`, \`rows\`, \`cols\`, \`seats\`, \`stageShape\`, \`organizationId\`, \`createdById\`, \`createdAt\`, \`updatedAt\`
+    FROM \`StageLayout\`
+    WHERE \`organizationId\` = ${access.organization.id}
+    ORDER BY \`createdAt\` DESC
+  `;
+
+  res.json({ layouts: layouts.map(publicStageLayout) });
+});
+
+app.post('/api/stage-layouts', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const input = parseStageLayoutInput(req.body);
+  if ('error' in input) return res.status(400).json({ error: input.error });
+
+  const access = await getUserOrganizationAccess(req.user!.sub);
+  if (!access) return res.status(404).json({ error: 'Organization not found.' });
+  if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
+
+  const id = crypto.randomUUID();
+  await prisma.$executeRaw`
+    INSERT INTO \`StageLayout\` (
+      \`id\`, \`name\`, \`venue\`, \`rows\`, \`cols\`, \`seats\`, \`stageShape\`, \`organizationId\`, \`createdById\`, \`createdAt\`, \`updatedAt\`
+    ) VALUES (
+      ${id}, ${input.name}, ${input.venue}, ${input.rows}, ${input.cols}, ${JSON.stringify(input.seats)}, ${input.stageShape}, ${access.organization.id}, ${req.user!.sub}, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)
+    )
+  `;
+
+  const layouts = await prisma.$queryRaw<StoredStageLayout[]>`
+    SELECT \`id\`, \`name\`, \`venue\`, \`rows\`, \`cols\`, \`seats\`, \`stageShape\`, \`organizationId\`, \`createdById\`, \`createdAt\`, \`updatedAt\`
+    FROM \`StageLayout\`
+    WHERE \`id\` = ${id}
+    LIMIT 1
+  `;
+
+  res.status(201).json({ layout: publicStageLayout(layouts[0]!) });
+});
+
+app.put('/api/stage-layouts/:id', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const id = typeof req.params.id === 'string' ? req.params.id : '';
+  if (!id) return res.status(400).json({ error: 'Layout id is required.' });
+
+  const input = parseStageLayoutInput(req.body);
+  if ('error' in input) return res.status(400).json({ error: input.error });
+
+  const access = await getUserOrganizationAccess(req.user!.sub);
+  if (!access) return res.status(404).json({ error: 'Organization not found.' });
+  if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
+
+  const result = await prisma.$executeRaw`
+    UPDATE \`StageLayout\`
+    SET
+      \`name\` = ${input.name},
+      \`venue\` = ${input.venue},
+      \`rows\` = ${input.rows},
+      \`cols\` = ${input.cols},
+      \`seats\` = ${JSON.stringify(input.seats)},
+      \`stageShape\` = ${input.stageShape},
+      \`updatedAt\` = CURRENT_TIMESTAMP(3)
+    WHERE \`id\` = ${id} AND \`organizationId\` = ${access.organization.id}
+  `;
+
+  if (Number(result) === 0) return res.status(404).json({ error: 'Layout not found.' });
+
+  const layouts = await prisma.$queryRaw<StoredStageLayout[]>`
+    SELECT \`id\`, \`name\`, \`venue\`, \`rows\`, \`cols\`, \`seats\`, \`stageShape\`, \`organizationId\`, \`createdById\`, \`createdAt\`, \`updatedAt\`
+    FROM \`StageLayout\`
+    WHERE \`id\` = ${id}
+    LIMIT 1
+  `;
+
+  res.json({ layout: publicStageLayout(layouts[0]!) });
+});
+
+app.delete('/api/stage-layouts/:id', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const id = typeof req.params.id === 'string' ? req.params.id : '';
+  if (!id) return res.status(400).json({ error: 'Layout id is required.' });
+
+  const access = await getUserOrganizationAccess(req.user!.sub);
+  if (!access) return res.status(404).json({ error: 'Organization not found.' });
+  if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
+
+  const result = await prisma.$executeRaw`
+    DELETE FROM \`StageLayout\`
+    WHERE \`id\` = ${id} AND \`organizationId\` = ${access.organization.id}
+  `;
+
+  if (Number(result) === 0) return res.status(404).json({ error: 'Layout not found.' });
+  res.json({ success: true });
+});
+
 app.get('/api/events', async (_, res) => {
   const events = await prisma.event.findMany({
     where: { status: EventStatus.PUBLISHED },
@@ -1113,7 +1321,7 @@ app.post('/api/register', requireAuth, requireRole(Role.STUDENT), async (req, re
 });
 
 const PORT = process.env.PORT || 3000;
-ensureUserProfileTable()
+Promise.all([ensureUserProfileTable(), ensureStageLayoutTable()])
   .then(() => {
     server.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
   })

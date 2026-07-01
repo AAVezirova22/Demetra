@@ -46,6 +46,27 @@ export type EventRecord = {
   updatedAt: string;
 };
 
+export type SeatStatus = 'available' | 'taken' | 'selected' | 'vip' | 'blocked';
+
+export type StageSeat = {
+  id: string;
+  row: number;
+  col: number;
+  status: SeatStatus;
+};
+
+export type StageLayoutRecord = {
+  id: string;
+  name: string;
+  venue: string;
+  rows: number;
+  cols: number;
+  seats: StageSeat[];
+  stageShape: 'rect' | 'arc' | 'thrust';
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type OrganizationMember = {
   id: string;
   email: string;
@@ -223,6 +244,35 @@ export async function registerForEvent(token: string, eventId: string) {
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ eventId }),
+  });
+}
+
+export async function listStageLayouts(token: string) {
+  return apiRequest<{ layouts: StageLayoutRecord[] }>('/stage-layouts', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function saveStageLayout(token: string, input: Omit<StageLayoutRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) {
+  const path = input.id ? `/stage-layouts/${encodeURIComponent(input.id)}` : '/stage-layouts';
+
+  return apiRequest<{ layout: StageLayoutRecord }>(path, {
+    method: input.id ? 'PUT' : 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteStageLayout(token: string, layoutId: string) {
+  return apiRequest<{ success: boolean }>(`/stage-layouts/${encodeURIComponent(layoutId)}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 }
 

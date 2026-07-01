@@ -7,11 +7,14 @@ import {
   acceptInvitation,
   fetchOrganization,
   getStoredAuth,
+  deleteStageLayout,
   listEvents,
   listMyEvents,
   listNotifications,
+  listStageLayouts,
   markAllNotificationsRead,
   markNotificationRead,
+  saveStageLayout as persistStageLayout,
   storeAuth,
   updateOrganizationMemberRole,
   type AuthRole,
@@ -20,6 +23,9 @@ import {
   type NotificationRecord,
   type OrganizationInvitation,
   type OrganizationMember,
+  type SeatStatus,
+  type StageLayoutRecord,
+  type StageSeat,
   type UserProfile,
 } from '../../shared/api/api';
 import './Dashboard.css';
@@ -32,9 +38,8 @@ interface DashboardProps {
 }
 
 // Types
-type SeatStatus = 'available' | 'taken' | 'selected' | 'vip' | 'blocked';
-interface Seat { id: string; row: number; col: number; status: SeatStatus; }
-interface StageLayout { id: string; name: string; venue: string; rows: number; cols: number; seats: Seat[]; stageShape: 'rect' | 'arc' | 'thrust'; createdAt: string; }
+type Seat = StageSeat;
+type StageLayout = StageLayoutRecord;
 
 // Mock Data
 function titleCaseEnum(value: string | undefined) {
@@ -66,27 +71,22 @@ const ORGANIZATION_KINDS = [
   { value: 'OTHER', label: 'Other' },
 ];
 
-const INITIAL_LAYOUTS: StageLayout[] = [
-  {
-    id: 'layout-1', name: 'Grand Hall', venue: 'Main Concert Hall', rows: 10, cols: 16,
-    stageShape: 'arc', createdAt: '2026-01-15',
-    seats: Array.from({ length: 10 }, (_, r) => Array.from({ length: 16 }, (_, c) => ({
-      id: `${r}-${c}`, row: r, col: c,
-      status: (r < 3 && (c < 2 || c > 13)) ? 'blocked' : (r === 0 && c >= 4 && c <= 11) ? 'vip' : 'available'
-    } as Seat))).flat()
-  },
-  {
-    id: 'layout-2', name: 'Studio B', venue: 'Intimate Studio', rows: 4, cols: 8,
-    stageShape: 'rect', createdAt: '2026-02-20',
-    seats: Array.from({ length: 4 }, (_, r) => Array.from({ length: 8 }, (_, c) => ({
-      id: `${r}-${c}`, row: r, col: c, status: 'available'
-    } as Seat))).flat()
-  },
-];
-
 function buildSeats(rows: number, cols: number): Seat[] {
   return Array.from({ length: rows }, (_, r) =>
     Array.from({ length: cols }, (_, c) => ({ id: `${r}-${c}`, row: r, col: c, status: 'available' as SeatStatus }))
+  ).flat();
+}
+
+function resizeSeats(current: Seat[], rows: number, cols: number): Seat[] {
+  const currentByPosition = new Map(current.map(seat => [`${seat.row}-${seat.col}`, seat.status]));
+
+  return Array.from({ length: rows }, (_, r) =>
+    Array.from({ length: cols }, (_, c) => ({
+      id: `${r}-${c}`,
+      row: r,
+      col: c,
+      status: currentByPosition.get(`${r}-${c}`) ?? 'available' as SeatStatus,
+    }))
   ).flat();
 }
 
@@ -140,6 +140,10 @@ function SeatMap({ layout, editable = false, onUpdate }: {
   const [paintMode, setPaintMode] = useState<SeatStatus>('available');
   const [isPainting, setIsPainting] = useState(false);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
+
+  useEffect(() => {
+    setSeats(layout.seats);
+  }, [layout.seats]);
 
   const toggleSeat = (id: string) => {
     if (!editable) return;
@@ -280,7 +284,7 @@ function SeatMap({ layout, editable = false, onUpdate }: {
 // Stage Layout Builder Modal
 function StageBuilderModal({ onClose, onSave, existing }: {
   onClose: () => void;
-  onSave: (layout: StageLayout) => void;
+  onSave: (layout: StageLayout) => Promise<void> | void;
   existing?: StageLayout;
 }) {
   const [name, setName] = useState(existing?.name ?? '');
@@ -289,18 +293,32 @@ function StageBuilderModal({ onClose, onSave, existing }: {
   const [cols, setCols] = useState(existing?.cols ?? 12);
   const [shape, setShape] = useState<'rect' | 'arc' | 'thrust'>(existing?.stageShape ?? 'rect');
   const [seats, setSeats] = useState<Seat[]>(existing?.seats ?? buildSeats(8, 12));
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setSeats(buildSeats(rows, cols));
+    setSeats(current => {
+      const next = resizeSeats(current, rows, cols);
+      return next;
+    });
   }, [rows, cols]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) return;
-    onSave({
+    setSaving(true);
+    setError('');
+    try {
+      await onSave({
       id: existing?.id ?? `layout-${Date.now()}`,
       name, venue, rows, cols, seats, stageShape: shape,
-      createdAt: existing?.createdAt ?? new Date().toISOString().split('T')[0],
-    });
+        createdAt: existing?.createdAt ?? new Date().toISOString().split('T')[0],
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save layout.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -353,17 +371,19 @@ function StageBuilderModal({ onClose, onSave, existing }: {
           <div className="builder-preview">
             <div className="builder-preview-label">Live Preview - paint seat types</div>
             <SeatMap
-              layout={{ id: 'preview', name, venue, rows, cols, seats, stageShape: shape, createdAt: '' }}
+              layout={{ id: 'preview', name, venue, rows, cols, seats, stageShape: shape, createdAt: '', updatedAt: '' }}
               editable
               onUpdate={setSeats}
             />
           </div>
         </div>
 
+        {error && <div className="auth-error" style={{ marginTop: 12 }}>{error}</div>}
+
         <div className="modal-footer">
-          <button className="modal-btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="modal-btn-primary" onClick={handleSave} disabled={!name.trim()}>
-            {existing ? 'Save changes' : 'Save layout'}
+          <button className="modal-btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="modal-btn-primary" onClick={handleSave} disabled={!name.trim() || saving}>
+            {saving ? 'Saving...' : existing ? 'Save changes' : 'Save layout'}
           </button>
         </div>
       </div>
@@ -459,6 +479,7 @@ function CreateEventModal({ layouts, initialLayout, onClose, onCreated }: {
             <div className="form-group"><label>Location</label><input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Main Concert Hall" /></div>
             <div className="form-group"><label>Capacity</label><input type="number" min={1} max={100000} value={capacity} onChange={e => setCapacity(Math.max(1, Number(e.target.value) || 1))} /></div>
             <div className="layout-selection-grid">
+              {layouts.length === 0 && <div className="no-events-state">No saved stage layouts yet.</div>}
               {layouts.map(l => (
                 <button key={l.id} type="button" className={`layout-select-card ${selectedLayout?.id === l.id ? 'selected' : ''}`} onClick={() => { setSelectedLayout(l); setLocation(l.venue); setCapacity(l.seats.filter(seat => seat.status !== 'blocked').length); }}>
                   <div className="layout-select-name">{l.name}</div>
@@ -857,13 +878,14 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
   const [showCreate, setShowCreate] = useState(false);
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingLayout, setEditingLayout] = useState<StageLayout | undefined>();
-  const [layouts, setLayouts] = useState<StageLayout[]>(INITIAL_LAYOUTS);
+  const [layouts, setLayouts] = useState<StageLayout[]>([]);
   const [eventRecords, setEventRecords] = useState<EventRecord[]>([]);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [eventsError, setEventsError] = useState('');
+  const [layoutsError, setLayoutsError] = useState('');
   const [initialEventLayout, setInitialEventLayout] = useState<StageLayout | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -913,6 +935,16 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
       .catch(() => {
         setNotifications([]);
         setUnreadCount(0);
+      });
+
+    listStageLayouts(auth.token)
+      .then(({ layouts }) => {
+        setLayouts(layouts);
+        setLayoutsError('');
+      })
+      .catch((err) => {
+        setLayouts([]);
+        setLayoutsError(err instanceof Error ? err.message : 'Could not load stage layouts.');
       });
   }, []);
 
@@ -988,10 +1020,41 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
 
   const demoteOrganizer = (member: OrganizationMember) => updateMemberRole(member, 'STUDENT');
 
-  const saveLayout = (l: StageLayout) => {
-    setLayouts(prev => prev.find(x => x.id === l.id) ? prev.map(x => x.id === l.id ? l : x) : [...prev, l]);
+  const saveLayout = async (l: StageLayout) => {
+    const auth = getStoredAuth();
+    if (!auth || !canManageOrganization) throw new Error('Log in as an organiser to save layouts.');
+
+    const isExistingLayout = Boolean(editingLayout?.id);
+    const { layout } = await persistStageLayout(auth.token, {
+      ...(isExistingLayout ? { id: l.id } : {}),
+      name: l.name,
+      venue: l.venue,
+      rows: l.rows,
+      cols: l.cols,
+      seats: l.seats,
+      stageShape: l.stageShape,
+    });
+
+    setLayouts(prev => prev.find(x => x.id === layout.id) ? prev.map(x => x.id === layout.id ? layout : x) : [layout, ...prev]);
+    setLayoutsError('');
     setShowBuilder(false);
     setEditingLayout(undefined);
+  };
+
+  const removeLayout = async (layoutId: string) => {
+    const auth = getStoredAuth();
+    if (!auth || !canManageOrganization) return;
+
+    const previous = layouts;
+    setLayouts(prev => prev.filter(x => x.id !== layoutId));
+    setLayoutsError('');
+
+    try {
+      await deleteStageLayout(auth.token, layoutId);
+    } catch (err) {
+      setLayouts(previous);
+      setLayoutsError(err instanceof Error ? err.message : 'Could not delete layout.');
+    }
   };
 
   const openCreateEvent = (layout: StageLayout | null = null) => {
@@ -1182,6 +1245,8 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                     <button className="dash-section-action" onClick={() => setSection('stages')}>Manage</button>
                   </div>
                   <div className="overview-stages-list">
+                    {layoutsError && <div className="no-events-state">{layoutsError}</div>}
+                    {!layoutsError && layouts.length === 0 && <div className="no-events-state">No stage layouts yet.</div>}
                     {layouts.map(l => (
                       <div key={l.id} className="overview-stage-row">
                         <div className="overview-stage-thumb">
@@ -1353,7 +1418,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                 <div><div className="dash-breadcrumb">Dashboard / Stage Layouts</div><h1 className="dash-page-title">Stage Layouts</h1></div>
                 <button className="dash-create-btn" onClick={() => { setEditingLayout(undefined); setShowBuilder(true); }}>+ New Layout</button>
               </div>
+              {layoutsError && <div className="auth-error" style={{ marginBottom: 16 }}>{layoutsError}</div>}
               <div className="stages-grid">
+                {!layoutsError && layouts.length === 0 && <div className="no-events-state">No stage layouts yet. Create one to use it when publishing events.</div>}
                 {layouts.map(l => (
                   <div key={l.id} className="stage-layout-card">
                     <div className="stage-layout-card-header">
@@ -1369,7 +1436,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                     <div className="stage-layout-actions">
                       <button className="dash-action-btn" onClick={() => { setEditingLayout(l); setShowBuilder(true); }}>Edit layout</button>
                       <button className="dash-action-btn" onClick={() => openCreateEvent(l)}>Use in new event</button>
-                      <button className="dash-action-btn dash-action-btn--danger" onClick={() => setLayouts(prev => prev.filter(x => x.id !== l.id))}>Delete</button>
+                      <button className="dash-action-btn dash-action-btn--danger" onClick={() => removeLayout(l.id)}>Delete</button>
                     </div>
                   </div>
                 ))}

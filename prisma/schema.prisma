@@ -58,6 +58,7 @@ model User {
   createdInvites OrganizationInvitation[] @relation("InvitationCreator")
   
   events        Event[]        @relation("OrganizerEvents")
+  stageLayouts  StageLayout[]
   registrations Registration[]
   notifications Notification[]
   
@@ -88,11 +89,31 @@ model Organization {
   ownerId   String           @unique
   owner     User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   events    Event[]
+  stageLayouts StageLayout[]
   members   OrganizationMembership[]
   invitations OrganizationInvitation[]
 
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
+}
+
+model StageLayout {
+  id             String       @id @default(uuid())
+  name           String
+  venue          String?
+  rows           Int
+  cols           Int
+  seats          Json
+  stageShape     String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, createdAt])
 }
 
 model OrganizationMembership {
