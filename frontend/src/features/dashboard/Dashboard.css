@@ -2312,4 +2312,182 @@
   border-bottom-color: rgba(201,162,39,0.14) !important;
 }
 
+/* Minimal dashboard skin. */
+.dash-page {
+  background: #f6f7f9 !important;
+}
+
+.dash-page-header,
+.dash-stat-card,
+.dash-content-card,
+.notification-pane,
+.stage-layout-card,
+.dash-post-detail,
+.dash-overview-strip > div,
+.dash-event-card-full,
+.student-card,
+.stage-layout-preview,
+.notification-item {
+  background: #ffffff !important;
+  border: 1px solid #e6e9ee !important;
+  box-shadow: none !important;
+}
+
+.dash-page-header::after,
+.dash-overview-strip > div::before {
+  display: none !important;
+}
+
+.dash-page-header {
+  border-radius: 10px !important;
+  padding: 18px 20px !important;
+}
+
+.dash-breadcrumb {
+  color: #8a94a3 !important;
+}
+
+.dash-page-title,
+.dash-section-title,
+.dash-event-card-full-title,
+.stage-layout-name {
+  color: #111827 !important;
+}
+
+.dash-create-btn,
+.modal-btn-primary,
+.invite-send-btn {
+  background: #111827 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  border: 1px solid #111827 !important;
+  font-weight: 700 !important;
+}
+
+.dash-create-btn:hover,
+.modal-btn-primary:hover,
+.invite-send-btn:hover {
+  background: #2f3746 !important;
+  filter: none !important;
+}
+
+.dash-stat-card {
+  border-radius: 10px !important;
+  min-height: 150px;
+}
+
+.dash-stat-card::after {
+  background: #111827 !important;
+  height: 2px;
+}
+
+.dash-stat-card:hover,
+.dash-content-card:hover,
+.stage-layout-card:hover {
+  transform: none !important;
+  border-color: #d3d8e0 !important;
+  box-shadow: none !important;
+}
+
+.dash-stat-icon-wrap {
+  background: #f3f4f6 !important;
+  border: 1px solid #e6e9ee !important;
+}
+
+.dash-stat-icon::after {
+  color: #111827 !important;
+}
+
+.dash-stat-value {
+  color: #111827 !important;
+}
+
+.dash-stat-label {
+  color: #111827 !important;
+}
+
+.dash-stat-sub,
+.dash-overview-strip span,
+.dash-event-row-meta,
+.dash-event-card-full-date,
+.stage-layout-meta,
+.student-card-inst,
+.student-card-year {
+  color: #6b7280 !important;
+}
+
+.dash-overview-strip span,
+.dash-overview-strip b {
+  padding-left: 0 !important;
+}
+
+.dash-overview-strip > div {
+  border-radius: 10px !important;
+}
+
+.dash-section-header {
+  border-bottom-color: #edf0f3 !important;
+}
+
+.dash-section-action {
+  color: #111827 !important;
+}
+
+.dash-event-row,
+.overview-stage-row,
+.dash-student-chip {
+  background: #ffffff !important;
+  border-color: #edf0f3 !important;
+}
+
+.dash-event-row-dot {
+  box-shadow: none !important;
+}
+
+.dash-mini-bar,
+.capacity-bar-track {
+  background: #edf0f3 !important;
+}
+
+.dash-event-card-full {
+  border-radius: 10px !important;
+}
+
+.dash-event-card-accent {
+  width: 4px !important;
+}
+
+.dash-action-btn {
+  background: #ffffff !important;
+  border: 1px solid #d8dde5 !important;
+  color: #374151 !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+.dash-action-btn:hover {
+  background: #f6f7f9 !important;
+  border-color: #c7ced8 !important;
+}
+
+.dash-action-btn--danger {
+  color: #b42318 !important;
+  border-color: #f0c9c5 !important;
+}
+
+.dash-action-btn--danger:hover {
+  background: #fff5f5 !important;
+  border-color: #e6a8a2 !important;
+}
+
+.dash-status-chip.active {
+  background: #ecfdf3 !important;
+  color: #027a48 !important;
+}
+
+.pending-invites-panel,
+.pending-invite-row {
+  border-color: #edf0f3 !important;
+}
+
 

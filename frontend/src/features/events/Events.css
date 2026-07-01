@@ -97,12 +97,15 @@
 
 .events-filters {
   display: flex;
+  align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .search-box {
   display: flex;
   align-items: center;
+  box-sizing: border-box;
   background: #ffffff;
   border: 1px solid rgba(22, 42, 67, 0.1);
   padding: 0 16px;
@@ -122,7 +125,9 @@
 
 .filter-select {
   height: 40px;
-  padding: 0 16px;
+  min-width: 150px;
+  box-sizing: border-box;
+  padding: 0 40px 0 16px;
   border-radius: 99px;
   border: 1px solid rgba(22, 42, 67, 0.1);
   background: #ffffff;
@@ -132,6 +137,7 @@
   font-weight: 500;
   cursor: pointer;
   outline: none;
+  line-height: 40px;
 }
 
 /* Event Grid & Cards */
@@ -856,6 +862,69 @@
   }
 }
 
+/* Final filter alignment overrides. */
+.events-controls-row {
+  align-items: center !important;
+}
+
+.events-filters {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end;
+  gap: 12px !important;
+  min-width: 0;
+}
+
+.events-filters .search-box,
+.events-filters .filter-select {
+  height: 42px !important;
+  box-sizing: border-box !important;
+}
+
+.events-filters .search-box {
+  flex: 1 1 260px;
+  max-width: 320px;
+}
+
+.events-filters .search-box input {
+  width: 100% !important;
+  min-width: 0;
+}
+
+.events-filters .filter-select {
+  flex: 0 0 170px;
+  min-width: 170px !important;
+  padding: 0 38px 0 16px !important;
+  line-height: 42px !important;
+}
+
+@media (max-width: 900px) {
+  .events-controls-row {
+    align-items: stretch !important;
+  }
+
+  .events-filters {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .events-filters .search-box {
+    max-width: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .events-filters {
+    flex-direction: column;
+  }
+
+  .events-filters .search-box,
+  .events-filters .filter-select {
+    width: 100%;
+    flex: 0 0 auto;
+  }
+}
+
 @media (max-width: 600px) {
   .event-detail-title {
     font-size: 22px;
@@ -1040,6 +1109,69 @@
   .sidebar-card {
     flex: 1;
     min-width: 200px;
+  }
+}
+
+/* Final filter alignment overrides. */
+.events-controls-row {
+  align-items: center !important;
+}
+
+.events-filters {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end;
+  gap: 12px !important;
+  min-width: 0;
+}
+
+.events-filters .search-box,
+.events-filters .filter-select {
+  height: 42px !important;
+  box-sizing: border-box !important;
+}
+
+.events-filters .search-box {
+  flex: 1 1 260px;
+  max-width: 320px;
+}
+
+.events-filters .search-box input {
+  width: 100% !important;
+  min-width: 0;
+}
+
+.events-filters .filter-select {
+  flex: 0 0 170px;
+  min-width: 170px !important;
+  padding: 0 38px 0 16px !important;
+  line-height: 42px !important;
+}
+
+@media (max-width: 900px) {
+  .events-controls-row {
+    align-items: stretch !important;
+  }
+
+  .events-filters {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .events-filters .search-box {
+    max-width: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .events-filters {
+    flex-direction: column;
+  }
+
+  .events-filters .search-box,
+  .events-filters .filter-select {
+    width: 100%;
+    flex: 0 0 auto;
   }
 }
 
