@@ -465,6 +465,13 @@
   flex-shrink: 0;
 }
 
+.dash-student-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .dash-student-chip-name {
   font-family: 'Inter', sans-serif;
   font-size: 12px;
@@ -1444,6 +1451,7 @@
 .dash-student-chip { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(22,42,67,0.02); border: 1px solid rgba(22,42,67,0.06); border-radius: 10px; position: relative; transition: border-color 0.15s; }
 .dash-student-chip:hover { border-color: rgba(22,42,67,0.14); }
 .dash-student-avatar { width: 36px; height: 36px; border-radius: 50%; font-family: 'Cinzel', serif; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.dash-student-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .dash-student-chip-name { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; color: #162a43; }
 .dash-student-chip-inst { font-family: 'Inter', sans-serif; font-size: 11px; color: #a0aec0; }
 .dash-pending-badge { position: absolute; top: 7px; right: 9px; background: rgba(229,62,62,0.1); color: #c53030; font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 6px; border-radius: 4px; }

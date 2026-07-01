@@ -3,6 +3,10 @@ import { Camera, Globe, MapPin, Save, Trash2, UserRound } from 'lucide-react';
 import { fetchProfile, getStoredAuth, storeAuth, updateProfile, type AuthUser, type UserProfile } from '../../shared/api/api';
 import './Profile.css';
 
+const AVATAR_MAX_DIMENSION = 512;
+const AVATAR_TARGET_BYTES = 350 * 1024;
+const AVATAR_MAX_DATA_URL_LENGTH = 900_000;
+
 interface ProfileProps {
   currentUser: AuthUser;
   onUserUpdated: (user: AuthUser) => void;
@@ -21,10 +25,84 @@ function fallbackProfile(user: AuthUser): UserProfile {
   };
 }
 
+function dataUrlSize(dataUrl: string) {
+  const base64 = dataUrl.split(',')[1] ?? '';
+  return Math.ceil((base64.length * 3) / 4);
+}
+
+function canvasToDataUrl(canvas: HTMLCanvasElement, type: string, quality: number) {
+  return new Promise<string>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Could not process profile picture.'));
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+      reader.onerror = () => reject(new Error('Could not read compressed profile picture.'));
+      reader.readAsDataURL(blob);
+    }, type, quality);
+  });
+}
+
+function loadImage(file: File) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Could not read that image.'));
+    };
+    image.src = url;
+  });
+}
+
+async function compressAvatar(file: File) {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Choose an image file for your profile picture.');
+  }
+
+  const image = await loadImage(file);
+  const scale = Math.min(1, AVATAR_MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight));
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Could not process profile picture.');
+
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(image, 0, 0, width, height);
+
+  const mimeType = 'image/webp';
+  const qualities = [0.82, 0.72, 0.62, 0.52, 0.42];
+  let smallest = '';
+
+  for (const quality of qualities) {
+    const candidate = await canvasToDataUrl(canvas, mimeType, quality);
+    if (!smallest || dataUrlSize(candidate) < dataUrlSize(smallest)) {
+      smallest = candidate;
+    }
+    if (dataUrlSize(candidate) <= AVATAR_TARGET_BYTES) return candidate;
+  }
+
+  if (smallest.length <= AVATAR_MAX_DATA_URL_LENGTH) return smallest;
+  throw new Error('That image is too large to use as a profile picture.');
+}
+
 export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
   const [profile, setProfile] = useState<UserProfile>(() => fallbackProfile(currentUser));
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [compressingAvatar, setCompressingAvatar] = useState(false);
 
   useEffect(() => {
     const auth = getStoredAuth();
@@ -55,15 +133,21 @@ export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
     setError('');
   };
 
-  const uploadAvatar = (event: ChangeEvent<HTMLInputElement>) => {
+  const uploadAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateField('avatar', typeof reader.result === 'string' ? reader.result : '');
-    };
-    reader.readAsDataURL(file);
+    setCompressingAvatar(true);
+    setError('');
+
+    try {
+      updateField('avatar', await compressAvatar(file));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not process profile picture.');
+    } finally {
+      setCompressingAvatar(false);
+      event.target.value = '';
+    }
   };
 
   const saveProfile = async () => {
@@ -137,8 +221,8 @@ export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
             <div className="profile-photo-actions">
               <label className="profile-file-btn">
                 <Camera size={16} />
-                Upload photo
-                <input type="file" accept="image/*" onChange={uploadAvatar} />
+                {compressingAvatar ? 'Processing...' : 'Upload photo'}
+                <input type="file" accept="image/*" onChange={uploadAvatar} disabled={compressingAvatar} />
               </label>
               {profile.avatar && (
                 <button type="button" className="profile-secondary-btn" onClick={() => updateField('avatar', '')}>
