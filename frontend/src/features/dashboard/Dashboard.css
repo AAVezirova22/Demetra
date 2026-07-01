@@ -2119,4 +2119,197 @@
   }
 }
 
+/* Modern dashboard skin inspired by the Instruments workspace. */
+.dash-page {
+  background:
+    radial-gradient(circle at 78% 8%, rgba(201,162,39,0.1), transparent 28%),
+    linear-gradient(180deg, #f8f3ea 0%, #fdfbf7 42%, #f7f8fb 100%) !important;
+}
+
+.dash-page-header,
+.dash-stat-card,
+.dash-content-card,
+.notification-pane,
+.stage-layout-card,
+.dash-post-detail,
+.dash-overview-strip > div {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,243,234,0.74)) !important;
+  border: 1px solid rgba(201,162,39,0.18) !important;
+  box-shadow:
+    0 28px 70px -42px rgba(20,40,70,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.72) !important;
+}
+
+.dash-page-header {
+  position: relative;
+  overflow: hidden;
+}
+
+.dash-page-header::after {
+  content: '';
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(201,162,39,0.65), rgba(201,162,39,0.06));
+}
+
+.dash-breadcrumb {
+  color: #9a7b1c !important;
+}
+
+.dash-page-title,
+.dash-section-title,
+.dash-event-card-full-title,
+.stage-layout-name,
+.dash-post-detail .dash-page-title {
+  color: #2a2e35 !important;
+}
+
+.dash-create-btn,
+.modal-btn-primary,
+.invite-send-btn {
+  background: linear-gradient(135deg, #9a7b1c, #c9a227 52%, #e6c868) !important;
+  color: #2a2e35 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 16px 34px -20px rgba(154,123,28,0.75), inset 0 1px 0 rgba(255,255,255,0.42) !important;
+}
+
+.dash-create-btn:hover,
+.modal-btn-primary:hover,
+.invite-send-btn:hover {
+  filter: brightness(0.98);
+}
+
+.dash-stat-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.dash-stat-card:hover,
+.dash-content-card:hover,
+.stage-layout-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(201,162,39,0.34) !important;
+  box-shadow:
+    0 34px 74px -42px rgba(20,40,70,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.78) !important;
+}
+
+.dash-stat-icon-wrap {
+  background: linear-gradient(180deg, rgba(201,162,39,0.18), rgba(201,162,39,0.08)) !important;
+  border: 1px solid rgba(201,162,39,0.24);
+}
+
+.dash-stat-card::after {
+  background: linear-gradient(90deg, var(--stat-color, #c9a227), rgba(201,162,39,0.18));
+}
+
+.dash-overview-strip > div {
+  position: relative;
+}
+
+.dash-overview-strip > div::before {
+  content: '';
+  position: absolute;
+  left: 18px;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  border-radius: 99px;
+  background: rgba(201,162,39,0.46);
+}
+
+.dash-overview-strip span,
+.dash-overview-strip b {
+  padding-left: 12px;
+}
+
+.dash-section-header {
+  border-bottom-color: rgba(201,162,39,0.22) !important;
+}
+
+.dash-section-action {
+  color: #9a7b1c !important;
+  font-weight: 800 !important;
+}
+
+.dash-event-row,
+.overview-stage-row,
+.dash-student-chip,
+.student-card,
+.stacked-form-shell {
+  background: rgba(255,255,255,0.55) !important;
+  border-color: rgba(201,162,39,0.12) !important;
+}
+
+.dash-event-row-dot {
+  box-shadow: 0 0 0 4px rgba(201,162,39,0.08);
+}
+
+.dash-mini-bar,
+.capacity-bar-track {
+  background: rgba(42,46,53,0.08) !important;
+}
+
+.dash-event-card-full {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,243,234,0.64)) !important;
+  border: 1px solid rgba(201,162,39,0.16) !important;
+  box-shadow:
+    0 26px 64px -42px rgba(20,40,70,0.42),
+    inset 0 1px 0 rgba(255,255,255,0.7) !important;
+}
+
+.dash-event-card-accent {
+  width: 7px !important;
+}
+
+.dash-action-btn {
+  border-radius: 8px !important;
+  background: rgba(255,255,255,0.56) !important;
+  border-color: rgba(42,46,53,0.12) !important;
+  color: #2a2e35 !important;
+}
+
+.dash-action-btn:hover {
+  background: rgba(201,162,39,0.08) !important;
+  border-color: rgba(201,162,39,0.28) !important;
+}
+
+.dash-action-btn--danger {
+  color: #b83232 !important;
+  border-color: rgba(184,50,50,0.2) !important;
+}
+
+.dash-action-btn--danger:hover {
+  background: rgba(184,50,50,0.06) !important;
+  border-color: rgba(184,50,50,0.28) !important;
+}
+
+.student-card,
+.stage-layout-preview,
+.notification-item {
+  background: rgba(255,255,255,0.62) !important;
+}
+
+.student-card-avatar,
+.dash-student-avatar,
+.member-profile-photo {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+}
+
+.dash-status-chip.active {
+  background: rgba(56,161,105,0.12) !important;
+}
+
+.pending-invites-panel {
+  border-top-color: rgba(201,162,39,0.22) !important;
+}
+
+.pending-invite-row {
+  border-bottom-color: rgba(201,162,39,0.14) !important;
+}
+
 
