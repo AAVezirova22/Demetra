@@ -915,6 +915,37 @@ app.patch('/api/organization/members/:userId', requireAuth, requireRole(Role.ORG
   res.json({ success: true });
 });
 
+app.delete('/api/organization/members/:userId', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const access = await getUserOrganizationAccess(req.user!.sub);
+  if (!access) return res.status(404).json({ error: 'Organization not found.' });
+  if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
+
+  const targetUserId = typeof req.params.userId === 'string' ? req.params.userId : '';
+  if (!targetUserId || targetUserId === access.organization.ownerId) {
+    return res.status(400).json({ error: 'This member cannot be removed.' });
+  }
+  if (targetUserId === req.user!.sub) {
+    return res.status(400).json({ error: 'You cannot remove yourself from the organization.' });
+  }
+
+  const membership = await prisma.organizationMembership.deleteMany({
+    where: { organizationId: access.organization.id, userId: targetUserId },
+  });
+  if (membership.count === 0) return res.status(404).json({ error: 'Member not found.' });
+
+  await prisma.notification.create({
+    data: {
+      userId: targetUserId,
+      type: 'OrganizationMemberRemoved',
+      title: `Removed from ${access.organization.name}`,
+      message: `You have been removed from ${access.organization.name}.`,
+      metadata: { organizationId: access.organization.id },
+    },
+  });
+
+  res.json({ success: true });
+});
+
 app.post('/api/organization', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
   const name = typeof req.body?.name === 'string'
     ? req.body.name.trim().replace(/\s+/g, ' ')

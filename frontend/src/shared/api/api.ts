@@ -411,6 +411,13 @@ export async function updateOrganizationMemberRole(token: string, userId: string
   });
 }
 
+export async function removeOrganizationMember(token: string, userId: string) {
+  return apiRequest<{ success: boolean }>(`/organization/members/${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 export async function fetchInvitation(token: string) {
   return apiRequest<{ invitation: InvitationDetails }>(`/invitations/${encodeURIComponent(token)}`);
 }

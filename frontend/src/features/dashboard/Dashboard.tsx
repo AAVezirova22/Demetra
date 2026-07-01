@@ -18,6 +18,7 @@ import {
   listStageLayouts,
   markAllNotificationsRead,
   markNotificationRead,
+  removeOrganizationMember,
   saveStageLayout as persistStageLayout,
   storeAuth,
   updateOrganizationMemberRole,
@@ -1173,6 +1174,24 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
 
   const demoteOrganizer = (member: OrganizationMember) => updateMemberRole(member, 'STUDENT');
 
+  const removeMember = async (member: OrganizationMember) => {
+    const auth = getStoredAuth();
+    if (!auth || !canManageOrganization || member.status === 'OWNER' || member.id === currentUser?.id) return;
+    const confirmed = window.confirm(`Remove ${member.name} from ${currentOrganizationName}?`);
+    if (!confirmed) return;
+
+    const previousMembers = members;
+    setMembers(prev => prev.filter(item => item.id !== member.id));
+
+    try {
+      await removeOrganizationMember(auth.token, member.id);
+      refreshOrganization();
+    } catch (err) {
+      setMembers(previousMembers);
+      setEventsError(err instanceof Error ? err.message : 'Could not remove member.');
+    }
+  };
+
   const saveLayout = async (l: StageLayout) => {
     const auth = getStoredAuth();
     if (!auth || !canManageOrganization) throw new Error('Log in as an organiser to save layouts.');
@@ -1670,6 +1689,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                         )}
                         {canManageOrganization && s.membershipRole === 'ORGANIZER' && s.status !== 'OWNER' && s.id !== currentUser?.id && (
                           <button type="button" className="dash-action-btn dash-action-btn--danger" onClick={() => demoteOrganizer(s)}>Demote to teacher</button>
+                        )}
+                        {canManageOrganization && s.status !== 'OWNER' && s.id !== currentUser?.id && (
+                          <button type="button" className="dash-action-btn dash-action-btn--danger" onClick={() => removeMember(s)}>Remove</button>
                         )}
                       </div>
                     </div>
