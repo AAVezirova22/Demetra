@@ -46,6 +46,23 @@ export type EventRecord = {
   updatedAt: string;
 };
 
+export type RegistrationStatus = 'CONFIRMED' | 'WAITLISTED' | 'CANCELLED';
+
+export type RegistrationRecord = {
+  id: string;
+  status: RegistrationStatus;
+  eventId: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  event?: EventRecord;
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+  };
+};
+
 export type SeatStatus = 'available' | 'taken' | 'selected' | 'vip' | 'blocked';
 
 export type StageSeat = {
@@ -238,7 +255,7 @@ export async function createEvent(token: string, input: {
 }
 
 export async function registerForEvent(token: string, eventId: string) {
-  return apiRequest<{ success: boolean; registration: { id: string; status: 'CONFIRMED' | 'WAITLISTED' | 'CANCELLED' } }>('/register', {
+  return apiRequest<{ success: boolean; registration: RegistrationRecord }>('/register', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -249,6 +266,57 @@ export async function registerForEvent(token: string, eventId: string) {
 
 export async function listStageLayouts(token: string) {
   return apiRequest<{ layouts: StageLayoutRecord[] }>('/stage-layouts', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function updateEvent(token: string, eventId: string, input: {
+  title: string;
+  description?: string;
+  category?: string;
+  startsAt?: string;
+  location?: string;
+  capacity: number;
+}) {
+  return apiRequest<{ event: EventRecord }>(`/events/${encodeURIComponent(eventId)}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function cancelEventRegistration(token: string, eventId: string) {
+  return apiRequest<{ success: boolean; registration: RegistrationRecord; promoted: RegistrationRecord | null }>(`/events/${encodeURIComponent(eventId)}/registration`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function listMyRegistrations(token: string) {
+  return apiRequest<{ registrations: RegistrationRecord[] }>('/registrations/my', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function listEventRegistrations(token: string, eventId: string) {
+  return apiRequest<{ registrations: RegistrationRecord[]; confirmed: RegistrationRecord[]; waitlisted: RegistrationRecord[] }>(`/events/${encodeURIComponent(eventId)}/registrations`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function cancelEvent(token: string, eventId: string) {
+  return apiRequest<{ event: EventRecord }>(`/events/${encodeURIComponent(eventId)}/cancel`, {
+    method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
     },

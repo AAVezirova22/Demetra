@@ -9,6 +9,7 @@ import {
   getStoredAuth,
   deleteStageLayout,
   listEvents,
+  listEventRegistrations,
   listMyEvents,
   listNotifications,
   listStageLayouts,
@@ -23,6 +24,7 @@ import {
   type NotificationRecord,
   type OrganizationInvitation,
   type OrganizationMember,
+  type RegistrationRecord,
   type SeatStatus,
   type StageLayoutRecord,
   type StageSeat,
@@ -518,6 +520,62 @@ function CreateEventModal({ layouts, initialLayout, onClose, onCreated }: {
     </div>
   );
 }
+
+function EventRegistrationsModal({ event, registrations, loading, error, onClose }: {
+  event: EventRecord;
+  registrations: RegistrationRecord[];
+  loading: boolean;
+  error: string;
+  onClose: () => void;
+}) {
+  const confirmed = registrations.filter(registration => registration.status === 'CONFIRMED');
+  const waitlisted = registrations.filter(registration => registration.status === 'WAITLISTED');
+
+  const renderRows = (rows: RegistrationRecord[], emptyText: string) => (
+    <div className="pending-invites-panel" style={{ marginTop: 12 }}>
+      {rows.length === 0 ? (
+        <div className="no-events-state">{emptyText}</div>
+      ) : rows.map((registration, index) => (
+        <div key={registration.id} className="pending-invite-row">
+          <span>{registration.user?.name ?? 'Participant'}</span>
+          <b>{registration.status === 'WAITLISTED' ? `#${index + 1} waitlist` : 'Confirmed'}</b>
+          <em>{registration.user?.email ?? ''}</em>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-panel" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title">Registrations</h3>
+          <button className="modal-close" onClick={onClose}>x</button>
+        </div>
+        <div className="invite-label">{event.title}</div>
+        {loading && <div className="no-events-state">Loading registrations...</div>}
+        {error && <div className="auth-error">{error}</div>}
+        {!loading && !error && (
+          <>
+            <div className="dash-section-header" style={{ marginTop: 18 }}>
+              <h2 className="dash-section-title">Confirmed</h2>
+              <span className="dash-status-chip active">{confirmed.length}</span>
+            </div>
+            {renderRows(confirmed, 'No confirmed participants yet.')}
+            <div className="dash-section-header" style={{ marginTop: 18 }}>
+              <h2 className="dash-section-title">Waitlist</h2>
+              <span className="dash-status-chip">{waitlisted.length}</span>
+            </div>
+            {renderRows(waitlisted, 'No one is waiting.')}
+          </>
+        )}
+        <div className="modal-footer">
+          <button className="modal-btn-secondary" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 function InviteModal({ onClose, onCreated }: { onClose: () => void; onCreated: (invite: OrganizationInvitation) => void }) {
   const [copied, setCopied] = useState<'link' | 'token' | null>(null);
   const [emailInput, setEmailInput] = useState('');
@@ -880,6 +938,10 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
   const [editingLayout, setEditingLayout] = useState<StageLayout | undefined>();
   const [layouts, setLayouts] = useState<StageLayout[]>([]);
   const [eventRecords, setEventRecords] = useState<EventRecord[]>([]);
+  const [registrationEvent, setRegistrationEvent] = useState<EventRecord | null>(null);
+  const [eventRegistrations, setEventRegistrations] = useState<RegistrationRecord[]>([]);
+  const [registrationsLoading, setRegistrationsLoading] = useState(false);
+  const [registrationsError, setRegistrationsError] = useState('');
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
@@ -1067,6 +1129,27 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     setInitialEventLayout(null);
   };
 
+  const openEventRegistrations = (eventId: string) => {
+    const auth = getStoredAuth();
+    const event = eventRecords.find(item => item.id === eventId);
+    if (!auth || !event) return;
+
+    setRegistrationEvent(event);
+    setEventRegistrations([]);
+    setRegistrationsError('');
+    setRegistrationsLoading(true);
+
+    listEventRegistrations(auth.token, eventId)
+      .then(({ registrations }) => {
+        setEventRegistrations(registrations);
+        setRegistrationsError('');
+      })
+      .catch((err) => {
+        setRegistrationsError(err instanceof Error ? err.message : 'Could not load registrations.');
+      })
+      .finally(() => setRegistrationsLoading(false));
+  };
+
   const saveOrganizationProfile = () => {
     if (!profileStorageKey) return;
 
@@ -1130,6 +1213,15 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
           initialLayout={initialEventLayout}
           onClose={closeCreateEvent}
           onCreated={(event) => setEventRecords(prev => [event, ...prev])}
+        />
+      )}
+      {canManageOrganization && registrationEvent && (
+        <EventRegistrationsModal
+          event={registrationEvent}
+          registrations={eventRegistrations}
+          loading={registrationsLoading}
+          error={registrationsError}
+          onClose={() => setRegistrationEvent(null)}
         />
       )}
       {canManageOrganization && showBuilder && <StageBuilderModal onClose={() => { setShowBuilder(false); setEditingLayout(undefined); }} onSave={saveLayout} existing={editingLayout} />}
@@ -1342,7 +1434,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                         </div>
                         {canManageOrganization && <div className="dash-event-card-full-actions">
                           <button className="dash-action-btn">Edit</button>
-                          <button className="dash-action-btn">Registrations</button>
+                          <button className="dash-action-btn" onClick={() => openEventRegistrations(ev.id)}>Registrations</button>
                           <button className="dash-action-btn dash-action-btn--danger">{ev.status === 'past' ? 'Archive' : 'Cancel'}</button>
                         </div>}
                       </div>

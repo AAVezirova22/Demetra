@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
-import { getStoredAuth, listEvents, registerForEvent, type EventRecord } from '../../shared/api/api';
+import {
+  cancelEventRegistration,
+  getStoredAuth,
+  listEvents,
+  listMyRegistrations,
+  registerForEvent,
+  type EventRecord,
+  type RegistrationStatus,
+} from '../../shared/api/api';
 import './Events.css';
 
 interface EventsProps {
@@ -238,12 +246,26 @@ function ClassroomLayout({ capacity, registered }: { capacity: number; registere
 
 // Event Detail Page
 
-function EventDetail({ event, onBack, onNavigate, onRegistered }: { event: Event; onBack: () => void; onNavigate: EventsProps['onNavigate']; onRegistered: (eventId: string, status: 'CONFIRMED' | 'WAITLISTED' | 'CANCELLED') => void }) {
-  const [joinState, setJoinState] = useState<'idle' | 'joining' | 'joined' | 'waitlist'>('idle');
+function EventDetail({ event, registrationStatus, onBack, onNavigate, onRegistered, onCancelled }: {
+  event: Event;
+  registrationStatus: RegistrationStatus | null;
+  onBack: () => void;
+  onNavigate: EventsProps['onNavigate'];
+  onRegistered: (eventId: string, status: RegistrationStatus) => void;
+  onCancelled: (eventId: string, previousStatus: RegistrationStatus, promoted: boolean) => void;
+}) {
+  const [joinState, setJoinState] = useState<'idle' | 'joining' | 'joined' | 'waitlist' | 'cancelling'>(
+    registrationStatus === 'CONFIRMED' ? 'joined' : registrationStatus === 'WAITLISTED' ? 'waitlist' : 'idle'
+  );
   const [joinError, setJoinError] = useState('');
   const isFull = event.registered >= event.capacity;
   const isPast = event.status === 'past';
   const pct = Math.round((event.registered / event.capacity) * 100);
+
+  useEffect(() => {
+    if (joinState === 'joining' || joinState === 'cancelling') return;
+    setJoinState(registrationStatus === 'CONFIRMED' ? 'joined' : registrationStatus === 'WAITLISTED' ? 'waitlist' : 'idle');
+  }, [registrationStatus]);
 
   const handleJoin = async () => {
     const auth = getStoredAuth();
@@ -261,6 +283,22 @@ function EventDetail({ event, onBack, onNavigate, onRegistered }: { event: Event
     } catch (err) {
       setJoinState('idle');
       setJoinError(err instanceof Error ? err.message : 'Could not register for this event.');
+    }
+  };
+
+  const handleCancel = async () => {
+    const auth = getStoredAuth();
+    if (!auth || !registrationStatus) return;
+
+    setJoinState('cancelling');
+    setJoinError('');
+    try {
+      const { promoted } = await cancelEventRegistration(auth.token, event.id);
+      onCancelled(event.id, registrationStatus, Boolean(promoted));
+      setJoinState('idle');
+    } catch (err) {
+      setJoinState(registrationStatus === 'CONFIRMED' ? 'joined' : 'waitlist');
+      setJoinError(err instanceof Error ? err.message : 'Could not cancel your registration.');
     }
   };
   const renderLayout = () => {
@@ -394,13 +432,21 @@ function EventDetail({ event, onBack, onNavigate, onRegistered }: { event: Event
             {isPast ? (
               <button className="join-btn join-btn--past" disabled>Event has passed</button>
             ) : joinState === 'joined' ? (
-              <div className="join-success">
-                <span>Done</span> You're registered!
-              </div>
+              <>
+                <div className="join-success">
+                  <span>Done</span> You're registered!
+                </div>
+                <button className="join-btn join-btn--waitlist" onClick={handleCancel} style={{ marginTop: 10 }}>Cancel registration</button>
+              </>
             ) : joinState === 'waitlist' ? (
-              <div className="join-success join-success--waitlist">
-                <span>Waitlist</span> Added to waitlist
-              </div>
+              <>
+                <div className="join-success join-success--waitlist">
+                  <span>Waitlist</span> Added to waitlist
+                </div>
+                <button className="join-btn join-btn--waitlist" onClick={handleCancel} style={{ marginTop: 10 }}>Leave waitlist</button>
+              </>
+            ) : joinState === 'cancelling' ? (
+              <button className="join-btn join-btn--loading" disabled><span className="spinner" /> Cancelling...</button>
             ) : (
               <button
                 className={`join-btn ${isFull ? 'join-btn--waitlist' : ''} ${joinState === 'joining' ? 'join-btn--loading' : ''}`}
@@ -469,9 +515,11 @@ export default function Events({ onNavigate }: EventsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [eventsError, setEventsError] = useState('');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [registrationsByEvent, setRegistrationsByEvent] = useState<Record<string, RegistrationStatus>>({});
 
   useEffect(() => {
     let cancelled = false;
+    const auth = getStoredAuth();
     listEvents()
       .then(({ events }) => {
         if (cancelled) return;
@@ -485,6 +533,18 @@ export default function Events({ onNavigate }: EventsProps) {
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
+
+    if (auth?.user.role === 'STUDENT') {
+      listMyRegistrations(auth.token)
+        .then(({ registrations }) => {
+          if (cancelled) return;
+          const activeRegistrations = registrations.filter(registration => registration.status !== 'CANCELLED');
+          setRegistrationsByEvent(Object.fromEntries(activeRegistrations.map(registration => [registration.eventId, registration.status])));
+        })
+        .catch(() => {
+          if (!cancelled) setRegistrationsByEvent({});
+        });
+    }
 
     return () => {
       cancelled = true;
@@ -506,13 +566,34 @@ export default function Events({ onNavigate }: EventsProps) {
   const pastCount = events.filter(e => e.status === 'past').length;
   const selectedEvent = selectedEventId ? events.find(event => event.id === selectedEventId) ?? null : null;
 
-  const handleRegistered = (eventId: string, status: 'CONFIRMED' | 'WAITLISTED' | 'CANCELLED') => {
+  const handleRegistered = (eventId: string, status: RegistrationStatus) => {
+    setRegistrationsByEvent(prev => ({ ...prev, [eventId]: status }));
     if (status !== 'CONFIRMED') return;
     setEvents(prev => prev.map(event => event.id === eventId ? { ...event, registered: Math.min(event.capacity, event.registered + 1) } : event));
   };
 
+  const handleCancelled = (eventId: string, previousStatus: RegistrationStatus, promoted: boolean) => {
+    setRegistrationsByEvent(prev => {
+      const next = { ...prev };
+      delete next[eventId];
+      return next;
+    });
+
+    if (previousStatus !== 'CONFIRMED' || promoted) return;
+    setEvents(prev => prev.map(event => event.id === eventId ? { ...event, registered: Math.max(0, event.registered - 1) } : event));
+  };
+
   if (selectedEvent) {
-    return <EventDetail event={selectedEvent} onBack={() => setSelectedEventId(null)} onNavigate={onNavigate} onRegistered={handleRegistered} />;
+    return (
+      <EventDetail
+        event={selectedEvent}
+        registrationStatus={registrationsByEvent[selectedEvent.id] ?? null}
+        onBack={() => setSelectedEventId(null)}
+        onNavigate={onNavigate}
+        onRegistered={handleRegistered}
+        onCancelled={handleCancelled}
+      />
+    );
   }
   return (
     <div className="events-page-container page-transition-container">

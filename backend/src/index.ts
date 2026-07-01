@@ -27,6 +27,12 @@ const NotificationStatus = {
   READ: 'READ',
 } as const;
 
+const RegistrationStatus = {
+  CONFIRMED: 'CONFIRMED',
+  WAITLISTED: 'WAITLISTED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
 const OrganizationKind = {
   MUSIC_SCHOOL: 'MUSIC_SCHOOL',
   CONSERVATORY: 'CONSERVATORY',
@@ -592,6 +598,30 @@ function publicStageLayout(layout: StoredStageLayout) {
     stageShape: layout.stageShape,
     createdAt: layout.createdAt,
     updatedAt: layout.updatedAt,
+  };
+}
+
+function publicRegistration(registration: any) {
+  return {
+    id: registration.id,
+    status: registration.status,
+    userId: registration.userId,
+    eventId: registration.eventId,
+    createdAt: registration.createdAt,
+    updatedAt: registration.updatedAt,
+    event: registration.event
+      ? {
+          ...registration.event,
+          registered: registration.event._count?.registrations ?? registration.event.registered ?? 0,
+        }
+      : undefined,
+    user: registration.user
+      ? {
+          id: registration.user.id,
+          email: registration.user.email,
+          name: registration.user.name,
+        }
+      : undefined,
   };
 }
 
@@ -1204,6 +1234,52 @@ app.get('/api/events/my', requireAuth, requireRole(Role.ORGANIZER), async (req, 
   });
 });
 
+app.get('/api/registrations/my', requireAuth, requireRole(Role.STUDENT), async (req, res) => {
+  const registrations = await prisma.registration.findMany({
+    where: { userId: req.user!.sub },
+    include: {
+      event: {
+        include: {
+          organizer: { select: { id: true, name: true } },
+          organization: { select: { id: true, name: true, kind: true } },
+          _count: { select: { registrations: { where: { status: RegistrationStatus.CONFIRMED } } } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  res.json({ registrations: registrations.map(publicRegistration) });
+});
+
+app.get('/api/events/:id/registrations', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const eventId = typeof req.params.id === 'string' ? req.params.id : '';
+  if (!eventId) return res.status(400).json({ error: 'Event id is required.' });
+
+  const access = await getUserOrganizationAccess(req.user!.sub);
+  if (!access) return res.status(404).json({ error: 'Organization not found.' });
+  if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
+
+  const event = await prisma.event.findFirst({
+    where: { id: eventId, organizationId: access.organization.id },
+    select: { id: true },
+  });
+  if (!event) return res.status(404).json({ error: 'Event not found.' });
+
+  const registrations = await prisma.registration.findMany({
+    where: { eventId, status: { in: [RegistrationStatus.CONFIRMED, RegistrationStatus.WAITLISTED] } },
+    include: { user: { select: { id: true, email: true, name: true } } },
+    orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
+  });
+  const mapped = registrations.map(publicRegistration);
+
+  res.json({
+    registrations: mapped,
+    confirmed: mapped.filter((registration) => registration.status === RegistrationStatus.CONFIRMED),
+    waitlisted: mapped.filter((registration) => registration.status === RegistrationStatus.WAITLISTED),
+  });
+});
+
 app.post('/api/events', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
   const input = parseEventInput(req.body);
   if ('error' in input) return res.status(400).json({ error: input.error });
@@ -1247,6 +1323,132 @@ app.post('/api/events', requireAuth, requireRole(Role.ORGANIZER), async (req, re
   }
 });
 
+app.patch('/api/events/:id', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const eventId = typeof req.params.id === 'string' ? req.params.id : '';
+  if (!eventId) return res.status(400).json({ error: 'Event id is required.' });
+
+  const input = parseEventInput(req.body);
+  if ('error' in input) return res.status(400).json({ error: input.error });
+
+  try {
+    const access = await getUserOrganizationAccess(req.user!.sub);
+    if (!access) return res.status(404).json({ error: 'Organization not found.' });
+    if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
+
+    const event = await prisma.$transaction(async (tx: any) => {
+      const existing = await tx.event.findFirst({
+        where: { id: eventId, organizationId: access.organization.id },
+      });
+      if (!existing) throw new Error('Event not found');
+      if (existing.status === EventStatus.CANCELLED || existing.status === EventStatus.CLOSED) {
+        throw new Error('Event is not editable');
+      }
+
+      const confirmedCount = await tx.registration.count({
+        where: { eventId, status: RegistrationStatus.CONFIRMED },
+      });
+      if (input.capacity < confirmedCount) {
+        throw new Error('Capacity below confirmed registrations');
+      }
+
+      const updated = await tx.event.update({
+        where: { id: eventId },
+        data: {
+          title: input.title,
+          description: input.description,
+          category: input.category,
+          startsAt: input.startsAt,
+          location: input.location,
+          capacity: input.capacity,
+          reminderSentAt: existing.startsAt?.getTime() === input.startsAt?.getTime() ? existing.reminderSentAt : null,
+        },
+      });
+
+      await tx.outboxEvent.create({
+        data: {
+          aggregateType: 'Event',
+          aggregateId: updated.id,
+          eventType: 'EventUpdated',
+          payload: { eventId: updated.id, organizerId: req.user!.sub },
+        },
+      });
+
+      return updated;
+    });
+
+    const registered = await prisma.registration.count({
+      where: { eventId, status: RegistrationStatus.CONFIRMED },
+    });
+
+    res.json({ event: { ...event, registered } });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Event not found') {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+    if (error instanceof Error && error.message === 'Event is not editable') {
+      return res.status(409).json({ error: 'Event is not editable.' });
+    }
+    if (error instanceof Error && error.message === 'Capacity below confirmed registrations') {
+      return res.status(409).json({ error: 'Capacity cannot be lower than confirmed registrations.' });
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.patch('/api/events/:id/cancel', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const eventId = typeof req.params.id === 'string' ? req.params.id : '';
+  if (!eventId) return res.status(400).json({ error: 'Event id is required.' });
+
+  try {
+    const access = await getUserOrganizationAccess(req.user!.sub);
+    if (!access) return res.status(404).json({ error: 'Organization not found.' });
+    if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
+
+    const event = await prisma.$transaction(async (tx: any) => {
+      const existing = await tx.event.findFirst({
+        where: { id: eventId, organizationId: access.organization.id },
+      });
+      if (!existing) throw new Error('Event not found');
+      if (existing.status === EventStatus.CANCELLED) return existing;
+
+      const activeRegistrations = await tx.registration.findMany({
+        where: { eventId, status: { in: [RegistrationStatus.CONFIRMED, RegistrationStatus.WAITLISTED] } },
+        select: { userId: true },
+      });
+
+      const updated = await tx.event.update({
+        where: { id: eventId },
+        data: { status: EventStatus.CANCELLED },
+      });
+
+      await tx.registration.updateMany({
+        where: { eventId, status: { in: [RegistrationStatus.CONFIRMED, RegistrationStatus.WAITLISTED] } },
+        data: { status: RegistrationStatus.CANCELLED },
+      });
+
+      await tx.outboxEvent.create({
+        data: {
+          aggregateType: 'Event',
+          aggregateId: updated.id,
+          eventType: 'EventCancelled',
+          payload: { eventId: updated.id, organizerId: req.user!.sub, userIds: activeRegistrations.map((registration: { userId: string }) => registration.userId) },
+        },
+      });
+
+      return updated;
+    });
+
+    res.json({ event: { ...event, registered: 0 } });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Event not found') {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 // Event Registration Endpoint (Concurrency Safe)
 app.post('/api/register', requireAuth, requireRole(Role.STUDENT), async (req, res) => {
   const userId = req.user!.sub;
@@ -1257,13 +1459,9 @@ app.post('/api/register', requireAuth, requireRole(Role.STUDENT), async (req, re
   }
 
   try {
-    // 1. Transaction to guarantee concurrency constraints
     const registration = await prisma.$transaction(async (tx: any) => {
-      
-      // Strict Row-level Locking: Lock the Event row against other concurrent threads
-      // This ensures we always read the *absolute latest* count before proceeding.
-      const lockQuery = await tx.$queryRaw<{ id: string, capacity: number }[]>`
-        SELECT id, capacity FROM \`Event\`
+      const lockQuery = await tx.$queryRaw<{ id: string, capacity: number, status: string }[]>`
+        SELECT id, capacity, status FROM \`Event\`
         WHERE id = ${eventId} 
         FOR UPDATE
       `;
@@ -1273,30 +1471,42 @@ app.post('/api/register', requireAuth, requireRole(Role.STUDENT), async (req, re
       }
 
       const event = lockQuery[0]!;
+      if (event.status !== EventStatus.PUBLISHED) {
+        throw new Error('Event is not open for registration');
+      }
 
-      // Read current confirmed counts
+      const existingRegistration = await tx.registration.findUnique({
+        where: { userId_eventId: { userId, eventId } },
+      });
+      if (existingRegistration && existingRegistration.status !== RegistrationStatus.CANCELLED) {
+        throw new Error('Already registered');
+      }
+
       const confirmedCount = await tx.registration.count({
-        where: { eventId, status: 'CONFIRMED' }
+        where: { eventId, status: RegistrationStatus.CONFIRMED }
       });
 
-      // Implement our capacity logic
-      const newStatus = confirmedCount < event.capacity ? 'CONFIRMED' : 'WAITLISTED';
+      const newStatus = confirmedCount < event.capacity ? RegistrationStatus.CONFIRMED : RegistrationStatus.WAITLISTED;
+      const now = new Date();
 
-      // Create the registration
-      const newRegistration = await tx.registration.create({
-        data: {
-          userId,
-          eventId,
-          status: newStatus
-        }
-      });
+      const newRegistration = existingRegistration
+        ? await tx.registration.update({
+            where: { id: existingRegistration.id },
+            data: { status: newStatus, createdAt: now, updatedAt: now },
+          })
+        : await tx.registration.create({
+            data: {
+              userId,
+              eventId,
+              status: newStatus
+            }
+          });
 
-      // Write domain event to Outbox atomic queue
       await tx.outboxEvent.create({
         data: {
           aggregateType: 'Registration',
           aggregateId: newRegistration.id,
-          eventType: newStatus === 'CONFIRMED' ? 'RegistrationConfirmed' : 'RegistrationWaitlisted',
+          eventType: newStatus === RegistrationStatus.CONFIRMED ? 'RegistrationConfirmed' : 'RegistrationWaitlisted',
           payload: { 
             registrationId: newRegistration.id, 
             status: newStatus, 
@@ -1312,11 +1522,95 @@ app.post('/api/register', requireAuth, requireRole(Role.STUDENT), async (req, re
     res.json({ success: true, registration });
   } catch (error: any) {
     console.error(error);
-    // Handle Prisma unique constraint violation (P2002) roughly
-    if (error.code === 'P2002') {
+    if (error instanceof Error && error.message === 'Already registered') {
       return res.status(409).json({ error: 'You are already registered for this event.' });
     }
+    if (error instanceof Error && error.message === 'Event not found') {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+    if (error instanceof Error && error.message === 'Event is not open for registration') {
+      return res.status(409).json({ error: 'Event is not open for registration.' });
+    }
     res.status(500).json({ error: error.message || 'Internal Server Error' });
+  }
+});
+
+app.delete('/api/events/:id/registration', requireAuth, requireRole(Role.STUDENT), async (req, res) => {
+  const userId = req.user!.sub;
+  const eventId = typeof req.params.id === 'string' ? req.params.id : '';
+  if (!eventId) return res.status(400).json({ error: 'Event id is required.' });
+
+  try {
+    const result = await prisma.$transaction(async (tx: any) => {
+      const lockQuery = await tx.$queryRaw<{ id: string, capacity: number }[]>`
+        SELECT id, capacity FROM \`Event\`
+        WHERE id = ${eventId}
+        FOR UPDATE
+      `;
+      if (lockQuery.length === 0) throw new Error('Event not found');
+
+      const registration = await tx.registration.findUnique({
+        where: { userId_eventId: { userId, eventId } },
+      });
+      if (!registration || registration.status === RegistrationStatus.CANCELLED) {
+        throw new Error('Registration not found');
+      }
+
+      const cancelled = await tx.registration.update({
+        where: { id: registration.id },
+        data: { status: RegistrationStatus.CANCELLED },
+      });
+
+      await tx.outboxEvent.create({
+        data: {
+          aggregateType: 'Registration',
+          aggregateId: cancelled.id,
+          eventType: 'RegistrationCancelled',
+          payload: { registrationId: cancelled.id, userId, eventId, previousStatus: registration.status },
+        },
+      });
+
+      let promoted = null;
+      if (registration.status === RegistrationStatus.CONFIRMED) {
+        const nextWaitlisted = await tx.registration.findFirst({
+          where: { eventId, status: RegistrationStatus.WAITLISTED },
+          orderBy: { createdAt: 'asc' },
+        });
+
+        if (nextWaitlisted) {
+          promoted = await tx.registration.update({
+            where: { id: nextWaitlisted.id },
+            data: { status: RegistrationStatus.CONFIRMED },
+          });
+
+          await tx.outboxEvent.create({
+            data: {
+              aggregateType: 'Registration',
+              aggregateId: promoted.id,
+              eventType: 'WaitlistPromoted',
+              payload: { registrationId: promoted.id, userId: promoted.userId, eventId },
+            },
+          });
+        }
+      }
+
+      return { cancelled, promoted };
+    });
+
+    res.json({
+      success: true,
+      registration: publicRegistration(result.cancelled),
+      promoted: result.promoted ? publicRegistration(result.promoted) : null,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Event not found') {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+    if (error instanceof Error && error.message === 'Registration not found') {
+      return res.status(404).json({ error: 'Registration not found.' });
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

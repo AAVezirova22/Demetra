@@ -28,6 +28,7 @@ enum RegistrationStatus {
 
 enum OutboxEventStatus {
   PENDING
+  PROCESSING
   PROCESSED
   FAILED
 }
@@ -162,11 +163,13 @@ model Event {
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
   registrations Registration[]
+  reminderSentAt DateTime?
   
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
   @@index([status, startsAt])
+  @@index([reminderSentAt, startsAt])
   @@index([organizerId])
   @@index([organizationId])
 }
