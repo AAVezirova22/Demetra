@@ -12,6 +12,17 @@ export type AuthUser = {
   } | null;
 };
 
+export type UserProfile = {
+  displayName: string;
+  avatar: string;
+  location: string;
+  bio: string;
+  headline: string;
+  primaryFocus: string;
+  phone: string;
+  website: string;
+};
+
 export type EventRecord = {
   id: string;
   title: string;
@@ -40,6 +51,7 @@ export type OrganizationMember = {
   email: string;
   name: string;
   role: AuthRole;
+  profile: UserProfile;
   membershipRole: AuthRole;
   status: 'OWNER' | 'ACTIVE';
   joinedAt: string;
@@ -154,6 +166,24 @@ export async function fetchCurrentUser(token: string) {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+  });
+}
+
+export async function fetchProfile(token: string) {
+  return apiRequest<{ profile: UserProfile }>('/profile', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function updateProfile(token: string, input: UserProfile) {
+  return apiRequest<{ user: AuthUser; profile: UserProfile }>('/profile', {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(input),
   });
 }
 

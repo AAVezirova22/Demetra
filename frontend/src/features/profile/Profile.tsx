@@ -1,30 +1,15 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { Camera, Globe, MapPin, Save, Trash2, UserRound } from 'lucide-react';
-import { getStoredAuth, storeAuth, type AuthUser } from '../../shared/api/api';
+import { fetchProfile, getStoredAuth, storeAuth, updateProfile, type AuthUser, type UserProfile } from '../../shared/api/api';
 import './Profile.css';
-
-type ProfileData = {
-  displayName: string;
-  avatar: string;
-  location: string;
-  bio: string;
-  headline: string;
-  primaryFocus: string;
-  phone: string;
-  website: string;
-};
 
 interface ProfileProps {
   currentUser: AuthUser;
   onUserUpdated: (user: AuthUser) => void;
 }
 
-function profileKey(userId: string) {
-  return `demetra.profile.${userId}`;
-}
-
-function loadProfile(user: AuthUser): ProfileData {
-  const fallback: ProfileData = {
+function fallbackProfile(user: AuthUser): UserProfile {
+  return {
     displayName: user.name,
     avatar: '',
     location: '',
@@ -34,29 +19,40 @@ function loadProfile(user: AuthUser): ProfileData {
     phone: '',
     website: '',
   };
-
-  const saved = localStorage.getItem(profileKey(user.id));
-  if (!saved) return fallback;
-
-  try {
-    return { ...fallback, ...(JSON.parse(saved) as Partial<ProfileData>) };
-  } catch {
-    return fallback;
-  }
 }
 
 export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
-  const [profile, setProfile] = useState<ProfileData>(() => loadProfile(currentUser));
+  const [profile, setProfile] = useState<UserProfile>(() => fallbackProfile(currentUser));
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    setProfile(loadProfile(currentUser));
+    const auth = getStoredAuth();
+    let cancelled = false;
+
+    setProfile(fallbackProfile(currentUser));
     setSaved(false);
+    setError('');
+
+    if (!auth) return;
+
+    fetchProfile(auth.token)
+      .then(({ profile: savedProfile }) => {
+        if (!cancelled) setProfile(savedProfile);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load profile.');
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [currentUser]);
 
-  const updateField = (field: keyof ProfileData, value: string) => {
+  const updateField = (field: keyof UserProfile, value: string) => {
     setProfile(prev => ({ ...prev, [field]: value }));
     setSaved(false);
+    setError('');
   };
 
   const uploadAvatar = (event: ChangeEvent<HTMLInputElement>) => {
@@ -70,7 +66,7 @@ export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
     reader.readAsDataURL(file);
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     const normalizedProfile = {
       ...profile,
       displayName: profile.displayName.trim() || currentUser.name,
@@ -81,14 +77,19 @@ export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
       website: profile.website.trim(),
     };
 
-    localStorage.setItem(profileKey(currentUser.id), JSON.stringify(normalizedProfile));
-    setProfile(normalizedProfile);
-
     const auth = getStoredAuth();
-    const updatedUser = { ...currentUser, name: normalizedProfile.displayName };
-    if (auth) storeAuth({ token: auth.token, user: updatedUser });
-    onUserUpdated(updatedUser);
-    setSaved(true);
+    if (!auth) return;
+
+    try {
+      const result = await updateProfile(auth.token, normalizedProfile);
+      storeAuth({ token: auth.token, user: result.user });
+      setProfile(result.profile);
+      onUserUpdated(result.user);
+      setSaved(true);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save profile.');
+    }
   };
 
   const roleLabel = currentUser.role === 'ORGANIZER' ? 'Teacher account' : 'Student account';
@@ -216,6 +217,7 @@ export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
             Save profile
           </button>
           {saved && <span className="profile-saved">Saved</span>}
+          {error && <span className="profile-error">{error}</span>}
         </div>
       </main>
     </div>

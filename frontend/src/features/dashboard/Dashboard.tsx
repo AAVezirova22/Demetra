@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import { Globe, Mail, MapPin, MoreHorizontal, Phone, X } from 'lucide-react';
 import {
   createEvent,
   createInvitation,
@@ -19,6 +20,7 @@ import {
   type NotificationRecord,
   type OrganizationInvitation,
   type OrganizationMember,
+  type UserProfile,
 } from '../../shared/api/api';
 import './Dashboard.css';
 
@@ -637,6 +639,80 @@ function memberRoleLabel(member: OrganizationMember) {
   return 'Student';
 }
 
+function memberInitials(member: Pick<OrganizationMember, 'name'>, profile?: UserProfile) {
+  return (profile?.displayName || member.name)
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join('') || 'D';
+}
+
+function ProfileModal({ member, onClose }: { member: OrganizationMember; onClose: () => void }) {
+  const profile = member.profile ?? {
+    displayName: member.name,
+    avatar: '',
+    location: '',
+    bio: '',
+    headline: memberRoleLabel(member),
+    primaryFocus: '',
+    phone: '',
+    website: '',
+  };
+  const displayName = profile.displayName || member.name;
+  const headline = profile.headline || memberRoleLabel(member);
+  const detailRows = [
+    { label: 'Location', value: profile.location, icon: <MapPin size={14} /> },
+    { label: 'Primary subject', value: profile.primaryFocus, icon: null },
+    { label: 'Email', value: member.email, icon: <Mail size={14} /> },
+    { label: 'Phone', value: profile.phone, icon: <Phone size={14} /> },
+    { label: 'Website', value: profile.website, icon: <Globe size={14} /> },
+  ].filter(row => row.value);
+
+  return (
+    <div className="member-profile-modal-backdrop" onClick={onClose}>
+      <div className="member-profile-modal" role="dialog" aria-modal="true" aria-label={`${displayName} profile`} onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="member-profile-close" onClick={onClose} aria-label="Close profile">
+          <X size={16} />
+        </button>
+        <div className="member-profile-header">
+          <div className="member-profile-photo">
+            {profile.avatar ? <img src={profile.avatar} alt="" /> : <span>{memberInitials(member, profile)}</span>}
+          </div>
+          <div>
+            <div className="member-profile-name">{displayName}</div>
+            <div className="member-profile-role">{headline}</div>
+            <span className="dash-status-chip active">{memberRoleLabel(member)}</span>
+          </div>
+        </div>
+
+        {profile.bio && (
+          <div className="member-profile-section">
+            <div className="member-profile-label">Bio</div>
+            <p>{profile.bio}</p>
+          </div>
+        )}
+
+        <div className="member-profile-details">
+          {detailRows.map(row => (
+            <div key={row.label} className="member-profile-detail">
+              <span className="member-profile-detail-icon">{row.icon}</span>
+              <span>
+                <b>{row.label}</b>
+                {row.label === 'Website' ? (
+                  <a href={row.value!.startsWith('http') ? row.value! : `https://${row.value}`} target="_blank" rel="noreferrer">{row.value}</a>
+                ) : (
+                  <em>{row.value}</em>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EmptyOrganizationDashboard({
   currentUser,
   onUserUpdated,
@@ -803,6 +879,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
   const [profileSubject, setProfileSubject] = useState('');
   const [profileLocation, setProfileLocation] = useState('');
   const [profileSaved, setProfileSaved] = useState(false);
+  const [selectedMemberProfile, setSelectedMemberProfile] = useState<OrganizationMember | null>(null);
 
   useEffect(() => {
     const auth = getStoredAuth();
@@ -1229,8 +1306,11 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                     return (
                     <div key={s.id} className="student-card" style={{ '--s-color': color } as any}>
                       <div className="student-card-avatar" style={{ background: `${color}18`, color, border: `2px solid ${color}33` }}>
-                        {s.name.split(' ').map(n => n[0]).join('')}
+                        {s.profile?.avatar ? <img src={s.profile.avatar} alt="" /> : memberInitials(s, s.profile)}
                       </div>
+                      <button type="button" className="member-profile-menu-btn" onClick={() => setSelectedMemberProfile(s)} aria-label={`View ${s.name} profile`} title="View profile">
+                        <MoreHorizontal size={16} />
+                      </button>
                       <div className="student-card-info">
                         <div className="student-card-name">{s.name}</div>
                         <div className="student-card-inst">{s.email}</div>
@@ -1361,6 +1441,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
           )}
         </main>
       </div>
+      {selectedMemberProfile && <ProfileModal member={selectedMemberProfile} onClose={() => setSelectedMemberProfile(null)} />}
     </>
   );
 }

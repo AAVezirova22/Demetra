@@ -5,9 +5,37 @@ import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
 import cors from 'cors';
 import crypto from 'crypto';
-import { EventStatus, NotificationStatus, OrganizationKind, PrismaClient, Role } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+const Role = {
+  STUDENT: 'STUDENT',
+  ORGANIZER: 'ORGANIZER',
+} as const;
+type Role = typeof Role[keyof typeof Role];
+
+const EventStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  CANCELLED: 'CANCELLED',
+  CLOSED: 'CLOSED',
+} as const;
+
+const NotificationStatus = {
+  UNREAD: 'UNREAD',
+  READ: 'READ',
+} as const;
+
+const OrganizationKind = {
+  MUSIC_SCHOOL: 'MUSIC_SCHOOL',
+  CONSERVATORY: 'CONSERVATORY',
+  UNIVERSITY_DEPARTMENT: 'UNIVERSITY_DEPARTMENT',
+  CHOIR: 'CHOIR',
+  STUDENT_CLUB: 'STUDENT_CLUB',
+  OTHER: 'OTHER',
+} as const;
+type OrganizationKind = typeof OrganizationKind[keyof typeof OrganizationKind];
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
@@ -52,7 +80,7 @@ app.use(cors({
     return callback(new Error('Not allowed by CORS'));
   },
 }));
-app.use(express.json({ limit: '32kb' }));
+app.use(express.json({ limit: '2mb' }));
 app.use('/api', (_, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   next();
@@ -117,6 +145,21 @@ const AUTH_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_MAX_ATTEMPTS = 20;
 const TOKEN_TTL_SECONDS = 60 * 60 * 12;
 const INVITE_TTL_DAYS = 14;
+
+type StoredUserProfile = {
+  userId: string;
+  avatar: string | null;
+  location: string | null;
+  bio: string | null;
+  headline: string | null;
+  primaryFocus: string | null;
+  phone: string | null;
+  website: string | null;
+};
+
+type ProfileInput =
+  | { error: string }
+  | { displayName: string | null; profile: Omit<StoredUserProfile, 'userId'> };
 
 function base64Url(input: Buffer | string) {
   return Buffer.from(input).toString('base64url');
@@ -347,6 +390,133 @@ async function getUserOrganizationAccess(userId: string) {
   };
 }
 
+function normalizeOptionalText(
+  value: unknown,
+  maxLength: number,
+  fieldName: string,
+  collapseWhitespace = true,
+): { value: string | null } | { error: string } {
+  const normalized = typeof value === 'string'
+    ? (collapseWhitespace ? value.trim().replace(/\s+/g, ' ') : value.trim())
+    : '';
+
+  if (normalized.length > maxLength) {
+    return { error: `${fieldName} must be ${maxLength} characters or less.` };
+  }
+
+  return { value: normalized || null };
+}
+
+function parseProfileInput(body: any): ProfileInput {
+  const displayName = normalizeOptionalText(body.displayName, 120, 'Display name');
+  if ('error' in displayName) return displayName;
+
+  const avatar = typeof body.avatar === 'string' ? body.avatar.trim() : '';
+  if (avatar && (!avatar.startsWith('data:image/') || avatar.length > 1_000_000)) {
+    return { error: 'Profile picture must be an image under 1 MB.' };
+  }
+
+  const location = normalizeOptionalText(body.location, 180, 'Location');
+  if ('error' in location) return location;
+  const bio = normalizeOptionalText(body.bio, 2000, 'Bio', false);
+  if ('error' in bio) return bio;
+  const headline = normalizeOptionalText(body.headline, 120, 'Headline');
+  if ('error' in headline) return headline;
+  const primaryFocus = normalizeOptionalText(body.primaryFocus, 120, 'Primary subject');
+  if ('error' in primaryFocus) return primaryFocus;
+  const phone = normalizeOptionalText(body.phone, 80, 'Phone');
+  if ('error' in phone) return phone;
+  const website = normalizeOptionalText(body.website, 240, 'Website');
+  if ('error' in website) return website;
+
+  return {
+    displayName: displayName.value,
+    profile: {
+      avatar: avatar || null,
+      location: location.value,
+      bio: bio.value,
+      headline: headline.value,
+      primaryFocus: primaryFocus.value,
+      phone: phone.value,
+      website: website.value,
+    },
+  };
+}
+
+function publicProfile(user: {
+  name: string;
+  role: Role;
+  profile?: Omit<StoredUserProfile, 'userId'> | null;
+}) {
+  return {
+    displayName: user.name,
+    avatar: user.profile?.avatar ?? '',
+    location: user.profile?.location ?? '',
+    bio: user.profile?.bio ?? '',
+    headline: user.profile?.headline ?? (user.role === Role.ORGANIZER ? 'Teacher' : 'Student'),
+    primaryFocus: user.profile?.primaryFocus ?? '',
+    phone: user.profile?.phone ?? '',
+    website: user.profile?.website ?? '',
+  };
+}
+
+async function ensureUserProfileTable() {
+  await prisma.$executeRaw`
+    CREATE TABLE IF NOT EXISTS \`UserProfile\` (
+      \`id\` VARCHAR(191) NOT NULL,
+      \`userId\` VARCHAR(191) NOT NULL,
+      \`avatar\` MEDIUMTEXT NULL,
+      \`location\` VARCHAR(191) NULL,
+      \`bio\` TEXT NULL,
+      \`headline\` VARCHAR(191) NULL,
+      \`primaryFocus\` VARCHAR(191) NULL,
+      \`phone\` VARCHAR(191) NULL,
+      \`website\` VARCHAR(191) NULL,
+      \`createdAt\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      \`updatedAt\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+      PRIMARY KEY (\`id\`),
+      UNIQUE INDEX \`UserProfile_userId_key\`(\`userId\`),
+      CONSTRAINT \`UserProfile_userId_fkey\` FOREIGN KEY (\`userId\`) REFERENCES \`User\`(\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+    )
+  `;
+}
+
+async function getProfilesByUserIds(userIds: string[]) {
+  if (userIds.length === 0) return new Map<string, StoredUserProfile>();
+
+  const placeholders = userIds.map(() => '?').join(',');
+  const profiles = await prisma.$queryRawUnsafe(
+    `SELECT userId, avatar, location, bio, headline, primaryFocus, phone, website FROM \`UserProfile\` WHERE userId IN (${placeholders})`,
+    ...userIds,
+  ) as StoredUserProfile[];
+
+  return new Map(profiles.map((profile: StoredUserProfile) => [profile.userId, profile]));
+}
+
+async function getProfileByUserId(userId: string) {
+  const profiles = await getProfilesByUserIds([userId]);
+  return profiles.get(userId) ?? null;
+}
+
+async function saveUserProfile(userId: string, profile: Omit<StoredUserProfile, 'userId'>) {
+  await prisma.$executeRaw`
+    INSERT INTO \`UserProfile\` (
+      \`id\`, \`userId\`, \`avatar\`, \`location\`, \`bio\`, \`headline\`, \`primaryFocus\`, \`phone\`, \`website\`, \`createdAt\`, \`updatedAt\`
+    ) VALUES (
+      ${crypto.randomUUID()}, ${userId}, ${profile.avatar}, ${profile.location}, ${profile.bio}, ${profile.headline}, ${profile.primaryFocus}, ${profile.phone}, ${profile.website}, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)
+    )
+    ON DUPLICATE KEY UPDATE
+      \`avatar\` = VALUES(\`avatar\`),
+      \`location\` = VALUES(\`location\`),
+      \`bio\` = VALUES(\`bio\`),
+      \`headline\` = VALUES(\`headline\`),
+      \`primaryFocus\` = VALUES(\`primaryFocus\`),
+      \`phone\` = VALUES(\`phone\`),
+      \`website\` = VALUES(\`website\`),
+      \`updatedAt\` = CURRENT_TIMESTAMP(3)
+  `;
+}
+
 app.get('/api/health', async (_, res) => {
   await prisma.$queryRaw`SELECT 1`;
   res.json({ ok: true });
@@ -357,7 +527,7 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
   if ('error' in input) return res.status(400).json({ error: input.error });
 
   try {
-    const user = await prisma.$transaction(async (tx) => {
+    const user = await prisma.$transaction(async (tx: any) => {
       const invitation = input.invitationToken
         ? await tx.organizationInvitation.findUnique({
             where: { token: input.invitationToken },
@@ -462,6 +632,36 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   res.json({ user: publicUser(user) });
 });
 
+app.get('/api/profile', requireAuth, async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.sub },
+    select: { id: true, name: true, role: true },
+  });
+
+  if (!user) return res.status(401).json({ error: 'Authentication required.' });
+  const profile = await getProfileByUserId(user.id);
+  res.json({ profile: publicProfile({ ...user, profile }) });
+});
+
+app.put('/api/profile', requireAuth, async (req, res) => {
+  const input = parseProfileInput(req.body);
+  if ('error' in input) return res.status(400).json({ error: input.error });
+
+  await saveUserProfile(req.user!.sub, input.profile);
+
+  const user = await prisma.user.update({
+    where: { id: req.user!.sub },
+    data: input.displayName ? { name: input.displayName } : {},
+    include: {
+      organization: { select: { id: true, name: true, kind: true } },
+      memberships: { include: { organization: { select: { id: true, name: true, kind: true } } } },
+    },
+  });
+
+  const profile = await getProfileByUserId(user.id);
+  res.json({ user: publicUser(user), profile: publicProfile({ ...user, profile }) });
+});
+
 app.get('/api/organization', requireAuth, async (req, res) => {
   const access = await getUserOrganizationAccess(req.user!.sub);
   if (!access) return res.status(404).json({ error: 'Organization not found.' });
@@ -479,6 +679,12 @@ app.get('/api/organization', requireAuth, async (req, res) => {
     }),
   ]);
 
+  const memberUsers = [
+    ...(owner ? [owner] : []),
+    ...memberships.filter((membership: any) => membership.userId !== organization.ownerId).map((membership: any) => membership.user),
+  ];
+  const profiles = await getProfilesByUserIds(memberUsers.map((member) => member.id));
+
   const invitations = canManage
     ? await prisma.organizationInvitation.findMany({
       where: { organizationId: organization.id, acceptedAt: null, expiresAt: { gt: new Date() } },
@@ -488,11 +694,12 @@ app.get('/api/organization', requireAuth, async (req, res) => {
     : [];
 
   const members = [
-    ...(owner ? [{ ...owner, membershipRole: Role.ORGANIZER, status: 'OWNER', joinedAt: owner.createdAt }] : []),
+    ...(owner ? [{ ...owner, profile: publicProfile({ ...owner, profile: profiles.get(owner.id) ?? null }), membershipRole: Role.ORGANIZER, status: 'OWNER', joinedAt: owner.createdAt }] : []),
     ...memberships
-      .filter((membership) => membership.userId !== organization.ownerId)
-      .map((membership) => ({
+      .filter((membership: any) => membership.userId !== organization.ownerId)
+      .map((membership: any) => ({
         ...membership.user,
+        profile: publicProfile({ ...membership.user, profile: profiles.get(membership.userId) ?? null }),
         membershipRole: membership.role,
         status: 'ACTIVE',
         joinedAt: membership.createdAt,
@@ -651,7 +858,7 @@ app.post('/api/invitations/:token/accept', requireAuth, async (req, res) => {
   if (typeof token !== 'string' || !token) return res.status(400).json({ error: 'Invitation token is required.' });
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const invitation = await tx.organizationInvitation.findUnique({
         where: { token },
         include: { organization: { select: { id: true, name: true, kind: true } } },
@@ -726,7 +933,7 @@ app.get('/api/notifications', requireAuth, async (req, res) => {
 
   res.json({
     notifications,
-    unreadCount: notifications.filter((notification) => notification.status === NotificationStatus.UNREAD).length,
+    unreadCount: notifications.filter((notification: any) => notification.status === NotificationStatus.UNREAD).length,
   });
 });
 
@@ -764,7 +971,7 @@ app.get('/api/events', async (_, res) => {
   });
 
   res.json({
-    events: events.map(({ _count, ...event }) => ({
+    events: events.map(({ _count, ...event }: any) => ({
       ...event,
       registered: _count.registrations,
     })),
@@ -782,7 +989,7 @@ app.get('/api/events/my', requireAuth, requireRole(Role.ORGANIZER), async (req, 
   });
 
   res.json({
-    events: events.map(({ _count, ...event }) => ({
+    events: events.map(({ _count, ...event }: any) => ({
       ...event,
       registered: _count.registrations,
     })),
@@ -798,7 +1005,7 @@ app.post('/api/events', requireAuth, requireRole(Role.ORGANIZER), async (req, re
     if (!access) return res.status(404).json({ error: 'Organization not found.' });
     if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
 
-    const event = await prisma.$transaction(async (tx) => {
+    const event = await prisma.$transaction(async (tx: any) => {
       const created = await tx.event.create({
         data: {
           title: input.title,
@@ -843,7 +1050,7 @@ app.post('/api/register', requireAuth, requireRole(Role.STUDENT), async (req, re
 
   try {
     // 1. Transaction to guarantee concurrency constraints
-    const registration = await prisma.$transaction(async (tx) => {
+    const registration = await prisma.$transaction(async (tx: any) => {
       
       // Strict Row-level Locking: Lock the Event row against other concurrent threads
       // This ensures we always read the *absolute latest* count before proceeding.
@@ -906,4 +1113,11 @@ app.post('/api/register', requireAuth, requireRole(Role.STUDENT), async (req, re
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
+ensureUserProfileTable()
+  .then(() => {
+    server.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
+  })
+  .catch((error) => {
+    console.error('Failed to initialize database', error);
+    process.exit(1);
+  });

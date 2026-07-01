@@ -1481,12 +1481,190 @@
   background: rgba(22,42,67,0.02); border: 1px solid rgba(22,42,67,0.07); border-radius: 14px;
   padding: 16px; display: flex; flex-direction: column; gap: 4px;
   transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
 }
 .student-card:hover { border-color: var(--s-color, rgba(22,42,67,0.15)); box-shadow: 0 4px 16px rgba(22,42,67,0.06); }
 .student-card-avatar { width: 44px; height: 44px; border-radius: 50%; font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+.student-card-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .student-card-name { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; color: #162a43; }
 .student-card-inst { font-family: 'Inter', sans-serif; font-size: 12px; color: #5c6e85; }
 .student-card-year { font-family: 'Inter', sans-serif; font-size: 11px; color: #a0aec0; margin-bottom: 4px; }
+
+.member-profile-menu-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(22,42,67,0.1);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.78);
+  color: #5c6e85;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.member-profile-menu-btn:hover {
+  background: #fff;
+  color: #162a43;
+  border-color: rgba(22,42,67,0.18);
+}
+
+.member-profile-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: rgba(10,18,30,0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.member-profile-modal {
+  position: relative;
+  width: min(520px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  background: #fff;
+  border: 1px solid rgba(22,42,67,0.08);
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(22,42,67,0.22);
+  padding: 24px;
+}
+
+.member-profile-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(22,42,67,0.1);
+  border-radius: 6px;
+  background: transparent;
+  color: #5c6e85;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.member-profile-close:hover {
+  background: rgba(22,42,67,0.04);
+  color: #162a43;
+}
+
+.member-profile-header {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding-right: 34px;
+}
+
+.member-profile-photo {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(167,154,14,0.1);
+  color: rgb(136,126,12);
+  border: 2px solid rgba(167,154,14,0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 800;
+  overflow: hidden;
+}
+
+.member-profile-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-profile-name {
+  font-family: 'Cinzel', serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: #162a43;
+  line-height: 1.15;
+}
+
+.member-profile-role {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #5c6e85;
+  margin: 4px 0 10px;
+}
+
+.member-profile-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(22,42,67,0.08);
+}
+
+.member-profile-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #a0aec0;
+  margin-bottom: 8px;
+}
+
+.member-profile-section p {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #435366;
+  white-space: pre-wrap;
+}
+
+.member-profile-details {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.member-profile-detail {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #435366;
+}
+
+.member-profile-detail-icon {
+  color: #a0aec0;
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.member-profile-detail b {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #a0aec0;
+  margin-bottom: 2px;
+}
+
+.member-profile-detail em,
+.member-profile-detail a {
+  font-style: normal;
+  color: #162a43;
+  overflow-wrap: anywhere;
+}
 
 .dash-status-chip { display: inline-block; padding: 3px 8px; border-radius: 99px; font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
 .dash-status-chip.active { background: rgba(56,161,105,0.1); color: #2f855a; }
