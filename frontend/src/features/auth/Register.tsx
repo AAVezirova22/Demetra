@@ -3,10 +3,6 @@ import './Auth.css';
 import { Building2, GraduationCap, Eye, EyeOff } from 'lucide-react';
 import { registerUser, storeAuth, type AuthUser } from '../../shared/api/api';
 
-const orgKinds = [
-  'Other',
-];
-
 interface RegisterProps {
   onBackToHome: () => void;
   onNavigateToLogin: () => void;
@@ -30,15 +26,12 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
 
     try {
       const normalizedTeacherName = teacherName.trim();
-      const teacherOrganizationName = `${normalizedTeacherName} Studio`.slice(0, 120);
 
       const auth = await registerUser({
         name: role === 'teacher' ? normalizedTeacherName : name.trim(),
         email,
         password,
         role: role === 'teacher' ? 'ORGANIZER' : 'STUDENT',
-        organizationName: role === 'teacher' ? teacherOrganizationName : undefined,
-        organizationKind: role === 'teacher' ? orgKinds[0] : undefined,
       });
       storeAuth(auth);
       onAuthenticated(auth.user);

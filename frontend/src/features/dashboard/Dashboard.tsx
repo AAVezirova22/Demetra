@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import {
   createEvent,
   createInvitation,
+  createOrganization,
+  acceptInvitation,
   fetchOrganization,
   getStoredAuth,
   listEvents,
@@ -9,6 +11,7 @@ import {
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  storeAuth,
   type AuthRole,
   type AuthUser,
   type EventRecord,
@@ -22,6 +25,7 @@ interface DashboardProps {
   onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join') => void;
   currentUser: AuthUser | null;
   onOpenInvitation: (token: string) => void;
+  onUserUpdated: (user: AuthUser) => void;
 }
 
 // Types
@@ -551,9 +555,9 @@ function InviteModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             <div className="invite-qr-row">
               <img className="invite-qr" src={qrUrl} alt="Invitation QR code" />
               <div className="invite-qr-copy">
-                <div className="invite-label">Invitation token</div>
+                <div className="invite-label">Join code</div>
                 <div className="invite-copy-row">
-                  <div className="invite-value invite-code">{invite.token.slice(0, 12).toUpperCase()}</div>
+                  <div className="invite-value invite-code">{invite.token}</div>
                   <button className={`invite-copy-btn ${copied === 'token' ? 'copied' : ''}`} onClick={() => copyValue('token', invite.token)}>
                     {copied === 'token' ? 'Copied' : 'Copy'}
                   </button>
@@ -618,8 +622,132 @@ function NotificationPane({
   );
 }
 
+function EmptyOrganizationDashboard({
+  currentUser,
+  onUserUpdated,
+}: {
+  currentUser: AuthUser;
+  onUserUpdated: (user: AuthUser) => void;
+}) {
+  const [organizationName, setOrganizationName] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [createError, setCreateError] = useState('');
+  const [joinError, setJoinError] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [joining, setJoining] = useState(false);
+
+  const normalizeJoinCode = (value: string) => {
+    const trimmed = value.trim();
+    try {
+      const parsed = new URL(trimmed);
+      return parsed.searchParams.get('token') || parsed.searchParams.get('invite') || trimmed;
+    } catch {
+      return trimmed;
+    }
+  };
+
+  const submitCreate = async (event: FormEvent) => {
+    event.preventDefault();
+    const auth = getStoredAuth();
+    if (!auth) return;
+
+    setCreating(true);
+    setCreateError('');
+    try {
+      const result = await createOrganization(auth.token, {
+        name: organizationName.trim(),
+        kind: 'OTHER',
+      });
+      storeAuth({ token: auth.token, user: result.user });
+      onUserUpdated(result.user);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Could not create organization.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const submitJoin = async (event: FormEvent) => {
+    event.preventDefault();
+    const auth = getStoredAuth();
+    if (!auth) return;
+
+    setJoining(true);
+    setJoinError('');
+    try {
+      const result = await acceptInvitation(auth.token, normalizeJoinCode(joinCode));
+      storeAuth({ token: auth.token, user: result.user });
+      onUserUpdated(result.user);
+    } catch (err) {
+      setJoinError(err instanceof Error ? err.message : 'Could not join organization.');
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  return (
+    <div className="dash-page dash-page-empty page-transition-container">
+      <main className="empty-org-main">
+        <div className="empty-org-header">
+          <div className="dash-breadcrumb">Dashboard / Organisation</div>
+          <h1 className="dash-page-title">You do not have an organisation yet</h1>
+          <p>
+            Create your own organisation, or join an existing one with the join code from an invitation.
+          </p>
+        </div>
+
+        <div className="empty-org-grid">
+          <form className="empty-org-panel" onSubmit={submitCreate}>
+            <div className="empty-org-panel-kicker">Create</div>
+            <h2>Create an organisation</h2>
+            <p>Start a new space for your students, events, and invitations.</p>
+            <div className="form-group">
+              <label htmlFor="new-organization-name">Organisation name</label>
+              <input
+                id="new-organization-name"
+                type="text"
+                required
+                minLength={2}
+                maxLength={120}
+                value={organizationName}
+                onChange={(event) => setOrganizationName(event.target.value)}
+                placeholder={`${currentUser.name}'s Studio`}
+              />
+            </div>
+            {createError && <div className="auth-error">{createError}</div>}
+            <button className="dash-create-btn empty-org-action" type="submit" disabled={creating}>
+              {creating ? 'Creating...' : 'Create organisation'}
+            </button>
+          </form>
+
+          <form className="empty-org-panel" onSubmit={submitJoin}>
+            <div className="empty-org-panel-kicker">Join</div>
+            <h2>Join with a code</h2>
+            <p>Paste the join code shown beside the invitation QR code.</p>
+            <div className="form-group">
+              <label htmlFor="organization-join-code">Join code</label>
+              <input
+                id="organization-join-code"
+                type="text"
+                required
+                value={joinCode}
+                onChange={(event) => setJoinCode(event.target.value)}
+                placeholder="Paste invitation code"
+              />
+            </div>
+            {joinError && <div className="auth-error">{joinError}</div>}
+            <button className="dash-create-btn empty-org-action" type="submit" disabled={joining}>
+              {joining ? 'Joining...' : 'Join organisation'}
+            </button>
+          </form>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 // Dashboard
-export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpenInvitation }: DashboardProps) {
+export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpenInvitation, onUserUpdated }: DashboardProps) {
   const [section, setSection] = useState<'overview' | 'events' | 'students' | 'stages' | 'settings'>('overview');
   const [showInvite, setShowInvite] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -791,8 +919,14 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     s.membershipRole.toLowerCase().includes(studentSearch.toLowerCase())
   );
 
-  if (!currentUser || !currentUser.organization) {
+  if (!currentUser) {
     return null;
+  }
+
+  if (!currentUser.organization) {
+    return currentUser.role === 'ORGANIZER'
+      ? <EmptyOrganizationDashboard currentUser={currentUser} onUserUpdated={onUserUpdated} />
+      : null;
   }
 
   const organizationName = profileOrganizationName.trim() || currentOrganizationName;
@@ -865,9 +999,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
               {/* Stats */}
               <div className="dash-stats-grid">
                 {[
-                  { icon: 'ST', value: members.filter(member => member.membershipRole === 'STUDENT').length, label: 'Students', sub: isOrganizer ? `${invitations.filter(invite => invite.role === 'STUDENT').length} pending invites` : 'In your organization', color: '#4f8ef7', bg: 'rgba(79,142,247,0.08)' },
-                  { icon: 'EV', value: dashboardEvents.filter(event => event.status !== 'past').length, label: 'Active Events', sub: `${dashboardEvents.filter(event => event.status === 'full').length} fully booked`, color: '#e8aa2e', bg: 'rgba(232,170,46,0.08)' },
-                  { icon: 'ORG', value: members.filter(member => member.membershipRole === 'ORGANIZER').length, label: 'Organizers', sub: organizationType, color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
+                  { icon: '🎓', value: members.filter(member => member.membershipRole === 'STUDENT').length, label: 'Students', sub: isOrganizer ? `${invitations.filter(invite => invite.role === 'STUDENT').length} pending invites` : 'In your organization', color: '#4f8ef7', bg: 'rgba(79,142,247,0.08)' },
+                  { icon: '🎼', value: dashboardEvents.filter(event => event.status !== 'past').length, label: 'Active Events', sub: `${dashboardEvents.filter(event => event.status === 'full').length} fully booked`, color: '#e8aa2e', bg: 'rgba(232,170,46,0.08)' },
+                  { icon: '🏛️', value: members.filter(member => member.membershipRole === 'ORGANIZER').length, label: 'Organizers', sub: organizationType, color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
                   ...(isOrganizer ? [{ icon: 'IN', value: invitations.length, label: 'Open Invites', sub: `${invitations.filter(invite => invite.email).length} email / ${invitations.filter(invite => !invite.email).length} link`, color: '#48bb78', bg: 'rgba(72,187,120,0.08)' }] : []),
                 ].map(s => (
                   <div key={s.label} className="dash-stat-card" style={{ '--stat-color': s.color, '--stat-bg': s.bg } as any}>

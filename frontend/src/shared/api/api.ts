@@ -206,6 +206,14 @@ export async function fetchOrganization(token: string) {
   });
 }
 
+export async function createOrganization(token: string, input: { name: string; kind?: string }) {
+  return apiRequest<{ organization: AuthUser['organization']; user: AuthUser }>('/organization', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+}
+
 export async function createInvitation(token: string, input: { email?: string; role: AuthRole }) {
   return apiRequest<{ invitation: OrganizationInvitation }>('/organization/invitations', {
     method: 'POST',

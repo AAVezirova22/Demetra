@@ -142,7 +142,7 @@ export default function Navbar({ onNavigate, currentView, currentUser, onLogout,
           Events
         </a>
         <a href="#instruments" className="nav-link" onClick={(e) => { e.preventDefault(); navigate('instruments'); }}>Instruments</a>
-        {currentUser?.organization && (
+        {(currentUser?.role === 'ORGANIZER' || currentUser?.organization) && (
           <a
             href="#dashboard"
             className="nav-link"
@@ -249,7 +249,7 @@ export default function Navbar({ onNavigate, currentView, currentUser, onLogout,
         <div className="nav-mobile-links">
           <a href="#events" className={`nav-mobile-link ${currentView === 'events' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); navigate('events'); }}>Events</a>
           <a href="#instruments" className={`nav-mobile-link ${currentView === 'instruments' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); navigate('instruments'); }}>Instruments</a>
-          {currentUser?.organization && (
+          {(currentUser?.role === 'ORGANIZER' || currentUser?.organization) && (
             <a href="#dashboard" className={`nav-mobile-link ${currentView === 'dashboard' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); navigate('dashboard'); }}>Dashboard</a>
           )}
         </div>

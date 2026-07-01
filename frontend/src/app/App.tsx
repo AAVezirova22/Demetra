@@ -101,7 +101,7 @@ export default function App() {
       .then(({ user }) => {
         setCurrentUser(user);
         storeAuth({ token: auth.token, user });
-        if (currentView === 'dashboard' && !user.organization) {
+        if (currentView === 'dashboard' && user.role !== 'ORGANIZER' && !user.organization) {
           setCurrentView('events');
         }
       })
@@ -129,7 +129,7 @@ export default function App() {
       setCurrentView('login');
       return;
     }
-    if (view === 'dashboard' && !currentUser?.organization) {
+    if (view === 'dashboard' && currentUser?.role !== 'ORGANIZER' && !currentUser?.organization) {
       setCurrentView('events');
       return;
     }
@@ -153,7 +153,7 @@ export default function App() {
       setInviteToken('');
       window.history.replaceState(null, '', window.location.pathname);
     }
-    setCurrentView(user.organization ? 'dashboard' : 'events');
+    setCurrentView(user.role === 'ORGANIZER' || user.organization ? 'dashboard' : 'events');
   };
 
   const handleLogout = () => {
@@ -286,6 +286,7 @@ export default function App() {
             onNavigate={(view) => setCurrentView(view)}
             currentUser={currentUser}
             onOpenInvitation={handleOpenInvitation}
+            onUserUpdated={setCurrentUser}
           />
         )}
 

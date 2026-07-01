@@ -190,6 +190,76 @@
   background: rgb(136,126,12);
 }
 
+.dash-page-empty {
+  display: block;
+  padding: 120px 24px 64px;
+}
+
+.empty-org-main {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.empty-org-header {
+  max-width: 640px;
+  margin-bottom: 28px;
+}
+
+.empty-org-header p {
+  margin: 12px 0 0;
+  color: #5c6e85;
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+.empty-org-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.empty-org-panel {
+  background: #fff;
+  border: 1px solid rgba(22,42,67,0.08);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(22,42,67,0.04);
+}
+
+.empty-org-panel-kicker {
+  color: rgb(136,126,12);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.empty-org-panel h2 {
+  color: #162a43;
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+
+.empty-org-panel p {
+  color: #607288;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+
+.empty-org-action {
+  margin-top: 14px;
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .empty-org-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Stats grid */
 .dash-stats-grid {
   display: grid;

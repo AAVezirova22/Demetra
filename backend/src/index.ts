@@ -227,10 +227,6 @@ function validateAuthInput(body: any, mode: 'register' | 'login') {
     return { error: 'Name must be between 2 and 80 characters.' };
   }
   const hasInvitationToken = typeof body.invitationToken === 'string' && body.invitationToken.trim().length > 0;
-  if (mode === 'register' && role === Role.ORGANIZER && !hasInvitationToken && (organizationName.length < 2 || organizationName.length > 120)) {
-    return { error: 'Organization name must be between 2 and 120 characters.' };
-  }
-
   return { email, password, name, role, organizationName, organizationKind, invitationToken: hasInvitationToken ? body.invitationToken.trim() : '' };
 }
 
@@ -391,14 +387,6 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
             metadata: { organizationId: invitation.organizationId },
           },
         });
-      } else if (input.role === Role.ORGANIZER) {
-        await tx.organization.create({
-          data: {
-            name: input.organizationName,
-            kind: input.organizationKind,
-            ownerId: createdUser.id,
-          },
-        });
       }
 
       return tx.user.findUniqueOrThrow({
@@ -499,6 +487,49 @@ app.get('/api/organization', requireAuth, async (req, res) => {
   ];
 
   res.json({ organization, members, invitations });
+});
+
+app.post('/api/organization', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const name = typeof req.body?.name === 'string'
+    ? req.body.name.trim().replace(/\s+/g, ' ')
+    : '';
+  const kind = normalizeOrganizationKind(req.body?.kind);
+
+  if (name.length < 2 || name.length > 120) {
+    return res.status(400).json({ error: 'Organization name must be between 2 and 120 characters.' });
+  }
+
+  const existingOrganization = await getUserOrganization(req.user!.sub);
+  if (existingOrganization) {
+    return res.status(409).json({ error: 'You already belong to an organization.' });
+  }
+
+  try {
+    const organization = await prisma.organization.create({
+      data: {
+        name,
+        kind,
+        ownerId: req.user!.sub,
+      },
+      select: { id: true, name: true, kind: true },
+    });
+
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: req.user!.sub },
+      include: {
+        organization: { select: { id: true, name: true, kind: true } },
+        memberships: { include: { organization: { select: { id: true, name: true, kind: true } } } },
+      },
+    });
+
+    res.status(201).json({ organization, user: publicUser(user) });
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'You already own an organization.' });
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 app.post('/api/organization/invitations', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
