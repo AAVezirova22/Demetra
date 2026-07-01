@@ -222,6 +222,14 @@ export async function createInvitation(token: string, input: { email?: string; r
   });
 }
 
+export async function updateOrganizationMemberRole(token: string, userId: string, role: AuthRole) {
+  return apiRequest<{ success: boolean }>(`/organization/members/${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ role }),
+  });
+}
+
 export async function fetchInvitation(token: string) {
   return apiRequest<{ invitation: InvitationDetails }>(`/invitations/${encodeURIComponent(token)}`);
 }

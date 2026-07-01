@@ -332,6 +332,21 @@ async function getUserOrganization(userId: string) {
   return membership?.organization ?? null;
 }
 
+async function getUserOrganizationAccess(userId: string) {
+  const organization = await getUserOrganization(userId);
+  if (!organization) return null;
+
+  const membership = await prisma.organizationMembership.findUnique({
+    where: { organizationId_userId: { organizationId: organization.id, userId } },
+    select: { role: true },
+  });
+
+  return {
+    organization,
+    canManage: organization.ownerId === userId || membership?.role === Role.ORGANIZER,
+  };
+}
+
 app.get('/api/health', async (_, res) => {
   await prisma.$queryRaw`SELECT 1`;
   res.json({ ok: true });
@@ -371,7 +386,7 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
           data: {
             organizationId: invitation.organizationId,
             userId: createdUser.id,
-            role: invitation.role,
+            role: Role.STUDENT,
           },
         });
         await tx.organizationInvitation.update({
@@ -383,7 +398,7 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
             userId: createdUser.id,
             type: 'OrganizationJoined',
             title: `Joined ${invitation.organization.name}`,
-            message: `You accepted the invitation to join ${invitation.organization.name} as ${invitation.role.toLowerCase()}.`,
+            message: `You accepted the invitation to join ${invitation.organization.name} as ${invitation.role === Role.ORGANIZER ? 'teacher' : 'student'}.`,
             metadata: { organizationId: invitation.organizationId },
           },
         });
@@ -448,8 +463,9 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
 });
 
 app.get('/api/organization', requireAuth, async (req, res) => {
-  const organization = await getUserOrganization(req.user!.sub);
-  if (!organization) return res.status(404).json({ error: 'Organization not found.' });
+  const access = await getUserOrganizationAccess(req.user!.sub);
+  if (!access) return res.status(404).json({ error: 'Organization not found.' });
+  const { organization, canManage } = access;
 
   const [owner, memberships] = await Promise.all([
     prisma.user.findUnique({
@@ -463,10 +479,7 @@ app.get('/api/organization', requireAuth, async (req, res) => {
     }),
   ]);
 
-  const canManageOrganization = organization.ownerId === req.user!.sub ||
-    memberships.some((membership) => membership.userId === req.user!.sub && membership.role === Role.ORGANIZER);
-
-  const invitations = canManageOrganization
+  const invitations = canManage
     ? await prisma.organizationInvitation.findMany({
       where: { organizationId: organization.id, acceptedAt: null, expiresAt: { gt: new Date() } },
       select: { id: true, token: true, email: true, role: true, createdAt: true, expiresAt: true },
@@ -487,6 +500,35 @@ app.get('/api/organization', requireAuth, async (req, res) => {
   ];
 
   res.json({ organization, members, invitations });
+});
+
+app.patch('/api/organization/members/:userId', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const access = await getUserOrganizationAccess(req.user!.sub);
+  if (!access) return res.status(404).json({ error: 'Organization not found.' });
+  if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
+
+  const targetUserId = typeof req.params.userId === 'string' ? req.params.userId : '';
+  const role = normalizeRole(req.body?.role);
+  if (!targetUserId || targetUserId === access.organization.ownerId) {
+    return res.status(400).json({ error: 'This member cannot be changed.' });
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true, role: true },
+  });
+  if (!target) return res.status(404).json({ error: 'Member not found.' });
+  if (role === Role.ORGANIZER && target.role !== Role.ORGANIZER) {
+    return res.status(400).json({ error: 'Only teacher accounts can be made organizers.' });
+  }
+
+  const membership = await prisma.organizationMembership.updateMany({
+    where: { organizationId: access.organization.id, userId: targetUserId },
+    data: { role },
+  });
+  if (membership.count === 0) return res.status(404).json({ error: 'Member not found.' });
+
+  res.json({ success: true });
 });
 
 app.post('/api/organization', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
@@ -533,8 +575,10 @@ app.post('/api/organization', requireAuth, requireRole(Role.ORGANIZER), async (r
 });
 
 app.post('/api/organization/invitations', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
-  const organization = await getUserOrganization(req.user!.sub);
-  if (!organization) return res.status(404).json({ error: 'Organization not found.' });
+  const access = await getUserOrganizationAccess(req.user!.sub);
+  if (!access) return res.status(404).json({ error: 'Organization not found.' });
+  if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
+  const { organization } = access;
 
   const email = normalizeEmail(req.body?.email);
   const role = normalizeRole(req.body?.role);
@@ -564,7 +608,7 @@ app.post('/api/organization/invitations', requireAuth, requireRole(Role.ORGANIZE
             userId: invitedUser.id,
             type: 'OrganizationInvite',
             title: `Invitation to ${organization.name}`,
-            message: `You have been invited to join ${organization.name} as ${role.toLowerCase()}.`,
+            message: `You have been invited to join ${organization.name} as ${role === Role.ORGANIZER ? 'teacher' : 'student'}.`,
             metadata: { token, organizationId: organization.id, role },
           },
         });
@@ -633,8 +677,8 @@ app.post('/api/invitations/:token/accept', requireAuth, async (req, res) => {
 
       await tx.organizationMembership.upsert({
         where: { organizationId_userId: { organizationId: invitation.organizationId, userId: user.id } },
-        create: { organizationId: invitation.organizationId, userId: user.id, role: invitation.role },
-        update: { role: invitation.role },
+        create: { organizationId: invitation.organizationId, userId: user.id, role: Role.STUDENT },
+        update: {},
       });
 
       await tx.organizationInvitation.update({
@@ -647,7 +691,7 @@ app.post('/api/invitations/:token/accept', requireAuth, async (req, res) => {
           userId: user.id,
           type: 'OrganizationJoined',
           title: `Joined ${invitation.organization.name}`,
-          message: `You joined ${invitation.organization.name} as ${invitation.role.toLowerCase()}.`,
+          message: `You joined ${invitation.organization.name} as ${invitation.role === Role.ORGANIZER ? 'teacher' : 'student'}.`,
           metadata: { organizationId: invitation.organizationId },
         },
       });
@@ -750,7 +794,9 @@ app.post('/api/events', requireAuth, requireRole(Role.ORGANIZER), async (req, re
   if ('error' in input) return res.status(400).json({ error: input.error });
 
   try {
-    const organization = await getUserOrganization(req.user!.sub);
+    const access = await getUserOrganizationAccess(req.user!.sub);
+    if (!access) return res.status(404).json({ error: 'Organization not found.' });
+    if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
 
     const event = await prisma.$transaction(async (tx) => {
       const created = await tx.event.create({
@@ -763,7 +809,7 @@ app.post('/api/events', requireAuth, requireRole(Role.ORGANIZER), async (req, re
           capacity: input.capacity,
           status: EventStatus.PUBLISHED,
           organizerId: req.user!.sub,
-          organizationId: organization?.id ?? null,
+          organizationId: access.organization.id,
         },
       });
 

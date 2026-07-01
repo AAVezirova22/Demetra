@@ -12,6 +12,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   storeAuth,
+  updateOrganizationMemberRole,
   type AuthRole,
   type AuthUser,
   type EventRecord,
@@ -540,14 +541,14 @@ function InviteModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             <input type="email" placeholder={role === 'ORGANIZER' ? 'name@teacher.edu or leave blank' : 'name@student.edu or leave blank'} value={emailInput} onChange={e => setEmailInput(e.target.value)} className="invite-email-input" />
             <select className="invite-email-input invite-role-select" value={role} onChange={(e) => setRole(e.target.value as AuthRole)}>
               <option value="STUDENT">Student</option>
-              <option value="ORGANIZER">Organizer</option>
+              <option value="ORGANIZER">Teacher</option>
             </select>
           </div>
         </div>
         <div className="invite-section">
           <div className="invite-label">Create invitation</div>
           <button className="invite-send-btn invite-create-wide" onClick={createInvite} disabled={creating}>
-            {creating ? 'Creating...' : `Create ${role.toLowerCase()} invite`}
+            {creating ? 'Creating...' : `Create ${role === 'ORGANIZER' ? 'teacher' : 'student'} invite`}
           </button>
           {error && <div className="auth-error" style={{ marginTop: 10 }}>{error}</div>}
         </div>
@@ -628,6 +629,12 @@ function NotificationPane({
       </div>
     </div>
   );
+}
+
+function memberRoleLabel(member: OrganizationMember) {
+  if (member.status === 'OWNER' || member.membershipRole === 'ORGANIZER') return 'Organizer';
+  if (member.role === 'ORGANIZER') return 'Teacher';
+  return 'Student';
 }
 
 function EmptyOrganizationDashboard({
@@ -785,6 +792,11 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
   const [studentSearch, setStudentSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const isOrganizer = currentUser?.role === 'ORGANIZER';
+  const currentMember = members.find(member => member.id === currentUser?.id);
+  const canManageOrganization = Boolean(
+    isOrganizer &&
+    (currentMember?.status === 'OWNER' || currentMember?.membershipRole === 'ORGANIZER')
+  );
   const currentOrganizationName = currentUser?.organization?.name ?? 'Your organization';
   const profileStorageKey = currentUser?.organization?.id ? `demetra.organizationProfile.${currentUser.organization.id}` : '';
   const [profileOrganizationName, setProfileOrganizationName] = useState('');
@@ -884,6 +896,17 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     markAllNotificationsRead(auth.token).catch(() => undefined);
   };
 
+  const makeOrganizer = async (member: OrganizationMember) => {
+    const auth = getStoredAuth();
+    if (!auth || !canManageOrganization) return;
+    try {
+      await updateOrganizationMemberRole(auth.token, member.id, 'ORGANIZER');
+      refreshOrganization();
+    } catch (err) {
+      setEventsError(err instanceof Error ? err.message : 'Could not update member role.');
+    }
+  };
+
   const saveLayout = (l: StageLayout) => {
     setLayouts(prev => prev.find(x => x.id === l.id) ? prev.map(x => x.id === l.id ? l : x) : [...prev, l]);
     setShowBuilder(false);
@@ -923,10 +946,10 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     { key: 'events' as const, label: 'My Events', icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.5"/><path d="M5 1v4M11 1v4M1 7h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
     )},
-    { key: 'students' as const, label: 'Students', icon: (
+    { key: 'students' as const, label: 'Participants', icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.5"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
     )},
-    ...(isOrganizer ? [{ key: 'stages' as const, label: 'Stage Layouts', icon: (
+    ...(canManageOrganization ? [{ key: 'stages' as const, label: 'Stage Layouts', icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="5" width="14" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M4 5V3.5C4 2.67 4.67 2 5.5 2h5c.83 0 1.5.67 1.5 1.5V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
     )}] : []),
     { key: 'settings' as const, label: 'Settings', icon: (
@@ -956,8 +979,8 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
 
   return (
     <>
-      {isOrganizer && showInvite && <InviteModal onClose={() => setShowInvite(false)} onCreated={(invite) => { setInvitations(prev => [invite, ...prev]); refreshOrganization(); }} />}
-      {isOrganizer && showCreate && (
+      {canManageOrganization && showInvite && <InviteModal onClose={() => setShowInvite(false)} onCreated={(invite) => { setInvitations(prev => [invite, ...prev]); refreshOrganization(); }} />}
+      {canManageOrganization && showCreate && (
         <CreateEventModal
           layouts={layouts}
           initialLayout={initialEventLayout}
@@ -965,7 +988,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
           onCreated={(event) => setEventRecords(prev => [event, ...prev])}
         />
       )}
-      {isOrganizer && showBuilder && <StageBuilderModal onClose={() => { setShowBuilder(false); setEditingLayout(undefined); }} onSave={saveLayout} existing={editingLayout} />}
+      {canManageOrganization && showBuilder && <StageBuilderModal onClose={() => { setShowBuilder(false); setEditingLayout(undefined); }} onSave={saveLayout} existing={editingLayout} />}
 
       <div className="dash-page page-transition-container">
         {/* Sidebar */}
@@ -991,7 +1014,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
               </button>
             ))}
           </nav>
-          {isOrganizer && sidebarOpen && (
+          {canManageOrganization && sidebarOpen && (
             <button className="dash-invite-btn" onClick={() => setShowInvite(true)}>
               + Invite Members
             </button>
@@ -1014,16 +1037,16 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                   <div className="dash-breadcrumb">Dashboard / Overview</div>
                   <h1 className="dash-page-title">Welcome back, {currentUser.name}</h1>
                 </div>
-                {isOrganizer && <button className="dash-create-btn" onClick={() => openCreateEvent()}>+ New Event</button>}
+                {canManageOrganization && <button className="dash-create-btn" onClick={() => openCreateEvent()}>+ New Event</button>}
               </div>
 
               {/* Stats */}
               <div className="dash-stats-grid">
                 {[
-                  { icon: '🎓', value: members.filter(member => member.membershipRole === 'STUDENT').length, label: 'Students', sub: isOrganizer ? `${invitations.filter(invite => invite.role === 'STUDENT').length} pending invites` : 'In your organization', color: '#4f8ef7', bg: 'rgba(79,142,247,0.08)' },
+                  { icon: '🎓', value: members.length, label: 'Participants', sub: canManageOrganization ? `${invitations.filter(invite => invite.role === 'STUDENT').length} pending student invites` : 'In your organization', color: '#4f8ef7', bg: 'rgba(79,142,247,0.08)' },
                   { icon: '🎼', value: dashboardEvents.filter(event => event.status !== 'past').length, label: 'Active Events', sub: `${dashboardEvents.filter(event => event.status === 'full').length} fully booked`, color: '#e8aa2e', bg: 'rgba(232,170,46,0.08)' },
-                  { icon: '🏛️', value: members.filter(member => member.membershipRole === 'ORGANIZER').length, label: 'Organizers', sub: organizationType, color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
-                  ...(isOrganizer ? [{ icon: 'IN', value: invitations.length, label: 'Open Invites', sub: `${invitations.filter(invite => invite.email).length} email / ${invitations.filter(invite => !invite.email).length} link`, color: '#48bb78', bg: 'rgba(72,187,120,0.08)' }] : []),
+                  { icon: '🏛️', value: members.filter(member => member.status === 'OWNER' || member.membershipRole === 'ORGANIZER').length, label: 'Organizers', sub: organizationType, color: '#7c6df0', bg: 'rgba(124,109,240,0.08)' },
+                  ...(canManageOrganization ? [{ icon: 'IN', value: invitations.length, label: 'Open Invites', sub: `${invitations.filter(invite => invite.email).length} email / ${invitations.filter(invite => !invite.email).length} link`, color: '#48bb78', bg: 'rgba(72,187,120,0.08)' }] : []),
                 ].map(s => (
                   <div key={s.label} className="dash-stat-card" style={{ '--stat-color': s.color, '--stat-bg': s.bg } as any}>
                     <div className="dash-stat-icon-wrap">
@@ -1037,13 +1060,12 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                   </div>
                 ))}
               </div>
-
               {/* Two-column layout below stats */}
               <div className="overview-grid">
                 {/* Events card */}
                 <div className="dash-content-card">
                   <div className="dash-section-header">
-                    <h2 className="dash-section-title">{isOrganizer ? 'Your Events' : 'Organization Events'}</h2>
+                    <h2 className="dash-section-title">{canManageOrganization ? 'Your Events' : 'Organization Events'}</h2>
                     <button className="dash-section-action" onClick={() => setSection('events')}>View all</button>
                   </div>
                   <div className="dash-events-list">
@@ -1073,7 +1095,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                 </div>
 
                 {/* Stages card */}
-                {isOrganizer && <div className="dash-content-card">
+                {canManageOrganization && <div className="dash-content-card">
                   <div className="dash-section-header">
                     <h2 className="dash-section-title">Stage Layouts</h2>
                     <button className="dash-section-action" onClick={() => setSection('stages')}>Manage</button>
@@ -1100,11 +1122,11 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                         <div className="overview-stage-badge">{l.venue}</div>
                       </div>
                     ))}
-                    {isOrganizer && <button className="overview-stage-add" onClick={() => setShowBuilder(true)}>+ New layout</button>}
+                    {canManageOrganization && <button className="overview-stage-add" onClick={() => setShowBuilder(true)}>+ New layout</button>}
                   </div>
                 </div>}
 
-                {!isOrganizer && (
+                {!canManageOrganization && (
                   <NotificationPane
                     notifications={notifications}
                     unreadCount={unreadCount}
@@ -1114,10 +1136,10 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                   />
                 )}
 
-                {/* Students card */}
+                {/* Participants card */}
                 <div className="dash-content-card" style={{ gridColumn: '1 / -1' }}>
                   <div className="dash-section-header">
-                    <h2 className="dash-section-title">Recent Students</h2>
+                    <h2 className="dash-section-title">Recent Participants</h2>
                     <button className="dash-section-action" onClick={() => setSection('students')}>View all</button>
                   </div>
                   <div className="dash-students-preview">
@@ -1130,12 +1152,12 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                         </div>
                         <div>
                           <div className="dash-student-chip-name">{s.name}</div>
-                          <div className="dash-student-chip-inst">{s.membershipRole === 'ORGANIZER' ? 'Organizer' : 'Student'}</div>
+                          <div className="dash-student-chip-inst">{memberRoleLabel(s)}</div>
                         </div>
                         {s.status === 'OWNER' && <div className="dash-pending-badge">Owner</div>}
                       </div>
                     );})}
-                    {members.length === 0 && <div className="no-events-state">No members yet. Create an invitation to add students and organizers.</div>}
+                    {members.length === 0 && <div className="no-events-state">No members yet. Create an invitation to add students and teachers.</div>}
                   </div>
                 </div>
               </div>
@@ -1147,7 +1169,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
             <div className="dash-section-content">
               <div className="dash-page-header">
                 <div><div className="dash-breadcrumb">Dashboard / My Events</div><h1 className="dash-page-title">My Events</h1></div>
-                {isOrganizer && <button className="dash-create-btn" onClick={() => openCreateEvent()}>+ New Event</button>}
+                {canManageOrganization && <button className="dash-create-btn" onClick={() => openCreateEvent()}>+ New Event</button>}
               </div>
               <div className="dash-events-full-list">
                 {eventsError && <div className="no-events-state">{eventsError}</div>}
@@ -1172,7 +1194,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                           </div>
                           <span className="capacity-pct-label">{ev.registered} / {ev.capacity}</span>
                         </div>
-                        {isOrganizer && <div className="dash-event-card-full-actions">
+                        {canManageOrganization && <div className="dash-event-card-full-actions">
                           <button className="dash-action-btn">Edit</button>
                           <button className="dash-action-btn">Registrations</button>
                           <button className="dash-action-btn dash-action-btn--danger">{ev.status === 'past' ? 'Archive' : 'Cancel'}</button>
@@ -1185,12 +1207,12 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
             </div>
           )}
 
-          {/* Students */}
+          {/* Participants */}
           {section === 'students' && (
             <div className="dash-section-content">
               <div className="dash-page-header">
-                <div><div className="dash-breadcrumb">Dashboard / Students</div><h1 className="dash-page-title">Students</h1></div>
-                {isOrganizer && <button className="dash-create-btn" onClick={() => setShowInvite(true)}>+ Invite</button>}
+                <div><div className="dash-breadcrumb">Dashboard / Participants</div><h1 className="dash-page-title">Participants</h1></div>
+                {canManageOrganization && <button className="dash-create-btn" onClick={() => setShowInvite(true)}>+ Invite</button>}
               </div>
               <div className="dash-content-card">
                 <div className="search-box" style={{ marginBottom: 24, width: '100%', maxWidth: 360 }}>
@@ -1208,23 +1230,26 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                       <div className="student-card-info">
                         <div className="student-card-name">{s.name}</div>
                         <div className="student-card-inst">{s.email}</div>
-                        <div className="student-card-year">{s.membershipRole === 'ORGANIZER' ? 'Organizer' : 'Student'}</div>
+                        <div className="student-card-year">{memberRoleLabel(s)}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 'auto' }}>
                         <span className={`dash-status-chip ${s.status === 'OWNER' ? 'active' : 'active'}`}>{s.status === 'OWNER' ? 'Owner' : 'Active'}</span>
                         <span className="member-joined-date">Joined {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(s.joinedAt))}</span>
+                        {canManageOrganization && s.role === 'ORGANIZER' && s.membershipRole !== 'ORGANIZER' && s.status !== 'OWNER' && (
+                          <button type="button" className="dash-action-btn" onClick={() => makeOrganizer(s)}>Make organizer</button>
+                        )}
                       </div>
                     </div>
                   );})}
                   {filteredMembers.length === 0 && <div className="no-events-state">No members found.</div>}
                 </div>
-                {isOrganizer && invitations.length > 0 && (
+                {canManageOrganization && invitations.length > 0 && (
                   <div className="pending-invites-panel">
                     <div className="invite-label">Pending invitations</div>
                     {invitations.map(invite => (
                       <div key={invite.id} className="pending-invite-row">
                         <span>{invite.email ?? 'Open link'}</span>
-                        <b>{invite.role === 'ORGANIZER' ? 'Organizer' : 'Student'}</b>
+                        <b>{invite.role === 'ORGANIZER' ? 'Teacher' : 'Student'}</b>
                         <em>Expires {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(invite.expiresAt))}</em>
                       </div>
                     ))}
@@ -1332,5 +1357,8 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     </>
   );
 }
+
+
+
 
 
