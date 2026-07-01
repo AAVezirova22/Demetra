@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { createClient } from 'redis';
+import { sendNotificationEmailSafely } from './email';
 
 const prisma = new PrismaClient();
 
@@ -48,6 +49,11 @@ async function claimPendingJobs() {
 }
 
 async function notifyUser(userId: string, type: string, title: string, message: string, metadata: Record<string, unknown>) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+
   await prisma.notification.create({
     data: {
       userId,
@@ -57,6 +63,8 @@ async function notifyUser(userId: string, type: string, title: string, message: 
       metadata: metadata as any,
     },
   });
+
+  await sendNotificationEmailSafely(user?.email, title, message);
 }
 
 async function ensureReminderColumn() {

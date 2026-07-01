@@ -6,6 +6,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import cors from 'cors';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
+import { sendNotificationEmailSafely } from './email';
 
 const prisma = new PrismaClient();
 
@@ -147,8 +148,12 @@ declare global {
 }
 
 const authAttempts = new Map<string, { count: number; resetAt: number }>();
+const loginFailures = new Map<string, { count: number; lockedUntil: number }>();
 const AUTH_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_MAX_ATTEMPTS = 20;
+const LOGIN_LOCK_ATTEMPTS = 5;
+const LOGIN_WARNING_ATTEMPTS = 3;
+const LOGIN_LOCK_MS = 2 * 60 * 1000;
 const TOKEN_TTL_SECONDS = 60 * 60 * 12;
 const INVITE_TTL_DAYS = 14;
 
@@ -293,6 +298,19 @@ function normalizeRole(role: unknown) {
   return role === Role.ORGANIZER || role === 'ORGANIZER' ? Role.ORGANIZER : Role.STUDENT;
 }
 
+function getPasswordRequirementError(password: string) {
+  if (password.length < 8 || password.length > 128) {
+    return 'Password must be between 8 and 128 characters.';
+  }
+  if (!/[a-z]/.test(password)) {
+    return 'Password must include at least one lowercase letter.';
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'Password must include at least one uppercase letter.';
+  }
+  return '';
+}
+
 function validateAuthInput(body: any, mode: 'register' | 'login') {
   const email = normalizeEmail(body.email);
   const password = typeof body.password === 'string' ? body.password : '';
@@ -306,8 +324,13 @@ function validateAuthInput(body: any, mode: 'register' | 'login') {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
     return { error: 'Enter a valid email address.' };
   }
-  if (password.length < 8 || password.length > 128) {
-    return { error: 'Password must be between 8 and 128 characters.' };
+  const passwordError = mode === 'register'
+    ? getPasswordRequirementError(password)
+    : password.length < 1 || password.length > 128
+      ? 'Enter your password.'
+      : '';
+  if (passwordError) {
+    return { error: passwordError };
   }
   if (mode === 'register' && (name.length < 2 || name.length > 80)) {
     return { error: 'Name must be between 2 and 80 characters.' };
@@ -332,6 +355,28 @@ function authRateLimit(req: express.Request, res: express.Response, next: expres
 
   attempt.count += 1;
   return next();
+}
+
+function loginFailureKey(req: express.Request, email: string) {
+  return email;
+}
+
+function getLoginLockMessage(lockedUntil: number) {
+  const seconds = Math.max(1, Math.ceil((lockedUntil - Date.now()) / 1000));
+  const minutes = Math.ceil(seconds / 60);
+  return `Too many wrong password attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`;
+}
+
+function isEventStillOpen(event: { status: string; startsAt: Date | null }) {
+  return event.status === EventStatus.PUBLISHED && (!event.startsAt || event.startsAt.getTime() > Date.now());
+}
+
+async function emailUserNotification(userId: string, title: string, message: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  await sendNotificationEmailSafely(user?.email, title, message);
 }
 
 function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -704,7 +749,7 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
   if ('error' in input) return res.status(400).json({ error: input.error });
 
   try {
-    const user = await prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const invitation = input.invitationToken
         ? await tx.organizationInvitation.findUnique({
             where: { token: input.invitationToken },
@@ -728,6 +773,13 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
         },
       });
 
+      const joinedNotification = invitation
+        ? {
+            title: `Joined ${invitation.organization.name}`,
+            message: `You accepted the invitation to join ${invitation.organization.name} as ${invitation.role === Role.ORGANIZER ? 'teacher' : 'student'}.`,
+          }
+        : null;
+
       if (invitation) {
         await tx.organizationMembership.create({
           data: {
@@ -744,22 +796,28 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
           data: {
             userId: createdUser.id,
             type: 'OrganizationJoined',
-            title: `Joined ${invitation.organization.name}`,
-            message: `You accepted the invitation to join ${invitation.organization.name} as ${invitation.role === Role.ORGANIZER ? 'teacher' : 'student'}.`,
+            title: joinedNotification!.title,
+            message: joinedNotification!.message,
             metadata: { organizationId: invitation.organizationId },
           },
         });
       }
 
-      return tx.user.findUniqueOrThrow({
+      const user = await tx.user.findUniqueOrThrow({
         where: { id: createdUser.id },
         include: {
           organization: { select: { id: true, name: true, kind: true } },
           memberships: { include: { organization: { select: { id: true, name: true, kind: true } } } },
         },
       });
+      return { user, joinedNotification };
     });
 
+    if (result.joinedNotification) {
+      await sendNotificationEmailSafely(result.user.email, result.joinedNotification.title, result.joinedNotification.message);
+    }
+
+    const user = result.user;
     res.status(201).json({ token: signToken(user), user: publicUser(user) });
   } catch (error: any) {
     if (error.code === 'P2002') {
@@ -778,6 +836,12 @@ app.post('/api/auth/login', authRateLimit, async (req, res) => {
   if ('error' in input) return res.status(400).json({ error: input.error });
 
   try {
+    const failureKey = loginFailureKey(req, input.email);
+    const failure = loginFailures.get(failureKey);
+    if (failure?.lockedUntil && failure.lockedUntil > Date.now()) {
+      return res.status(429).json({ error: getLoginLockMessage(failure.lockedUntil) });
+    }
+
     const user = await prisma.user.findUnique({
       where: { email: input.email },
       include: {
@@ -786,9 +850,22 @@ app.post('/api/auth/login', authRateLimit, async (req, res) => {
       },
     });
     if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
+      const nextCount = failure?.lockedUntil && failure.lockedUntil <= Date.now() ? 1 : (failure?.count ?? 0) + 1;
+      if (nextCount >= LOGIN_LOCK_ATTEMPTS) {
+        const lockedUntil = Date.now() + LOGIN_LOCK_MS;
+        loginFailures.set(failureKey, { count: nextCount, lockedUntil });
+        return res.status(429).json({ error: 'Too many wrong password attempts. You are locked out for 2 minutes.' });
+      }
+
+      loginFailures.set(failureKey, { count: nextCount, lockedUntil: 0 });
+      const attemptsRemaining = LOGIN_LOCK_ATTEMPTS - nextCount;
+      const warning = nextCount >= LOGIN_WARNING_ATTEMPTS
+        ? ` ${attemptsRemaining} more wrong attempt${attemptsRemaining === 1 ? '' : 's'} will lock this login for 2 minutes.`
+        : '';
+      return res.status(401).json({ error: `Invalid email or password.${warning}` });
     }
 
+    loginFailures.delete(failureKey);
     res.json({ token: signToken(user), user: publicUser(user) });
   } catch (error) {
     console.error(error);
@@ -942,6 +1019,7 @@ app.delete('/api/organization/members/:userId', requireAuth, requireRole(Role.OR
       metadata: { organizationId: access.organization.id },
     },
   });
+  await emailUserNotification(targetUserId, `Removed from ${access.organization.name}`, `You have been removed from ${access.organization.name}.`);
 
   res.json({ success: true });
 });
@@ -1018,15 +1096,18 @@ app.post('/api/organization/invitations', requireAuth, requireRole(Role.ORGANIZE
     if (email) {
       const invitedUser = await prisma.user.findUnique({ where: { email }, select: { id: true } });
       if (invitedUser) {
+        const title = `Invitation to ${organization.name}`;
+        const message = `You have been invited to join ${organization.name} as ${role === Role.ORGANIZER ? 'teacher' : 'student'}.`;
         await prisma.notification.create({
           data: {
             userId: invitedUser.id,
             type: 'OrganizationInvite',
-            title: `Invitation to ${organization.name}`,
-            message: `You have been invited to join ${organization.name} as ${role === Role.ORGANIZER ? 'teacher' : 'student'}.`,
+            title,
+            message,
             metadata: { token, organizationId: organization.id, role },
           },
         });
+        await sendNotificationEmailSafely(email, title, message);
       }
     }
 
@@ -1075,7 +1156,7 @@ app.post('/api/organization/posts', requireAuth, requireRole(Role.ORGANIZER), as
     if (!access) return res.status(404).json({ error: 'Organization not found.' });
     if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
 
-    const post = await prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const created = await tx.organizationPost.create({
         data: {
           title: input.title,
@@ -1098,22 +1179,27 @@ app.post('/api/organization/posts', requireAuth, requireRole(Role.ORGANIZER), as
         organization?.ownerId,
         ...memberships.map((membership: { userId: string }) => membership.userId),
       ].filter((userId): userId is string => typeof userId === 'string')));
+      const title = `New post: ${created.title}`;
+      const message = `${created.author.name} posted news in ${access.organization.name}.`;
 
       if (recipientIds.length > 0) {
         await tx.notification.createMany({
           data: recipientIds.map((userId: string) => ({
             userId,
             type: 'OrganizationPostPublished',
-            title: `New post: ${created.title}`,
-            message: `${created.author.name} posted news in ${access.organization.name}.`,
+            title,
+            message,
             metadata: { postId: created.id, organizationId: access.organization.id },
           })),
         });
       }
 
-      return created;
+      return { post: created, recipientIds, title, message };
     });
 
+    await Promise.all(result.recipientIds.map((userId: string) => emailUserNotification(userId, result.title, result.message)));
+
+    const post = result.post;
     res.status(201).json({ post: publicOrganizationPost(post) });
   } catch (error) {
     console.error(error);
@@ -1185,12 +1271,15 @@ app.post('/api/invitations/:token/accept', requireAuth, async (req, res) => {
         data: { acceptedAt: new Date(), acceptedById: user.id },
       });
 
+      const title = `Joined ${invitation.organization.name}`;
+      const message = `You joined ${invitation.organization.name} as ${invitation.role === Role.ORGANIZER ? 'teacher' : 'student'}.`;
+
       await tx.notification.create({
         data: {
           userId: user.id,
           type: 'OrganizationJoined',
-          title: `Joined ${invitation.organization.name}`,
-          message: `You joined ${invitation.organization.name} as ${invitation.role === Role.ORGANIZER ? 'teacher' : 'student'}.`,
+          title,
+          message,
           metadata: { organizationId: invitation.organizationId },
         },
       });
@@ -1203,8 +1292,10 @@ app.post('/api/invitations/:token/accept', requireAuth, async (req, res) => {
         },
       });
 
-      return { user: updatedUser, organization: invitation.organization };
+      return { user: updatedUser, organization: invitation.organization, title, message };
     });
+
+    await sendNotificationEmailSafely(result.user.email, result.title, result.message);
 
     res.json({ user: publicUser(result.user), organization: result.organization });
   } catch (error) {
@@ -1423,8 +1514,8 @@ app.get('/api/events/:id/registrations', requireAuth, requireRole(Role.ORGANIZER
 
   res.json({
     registrations: mapped,
-    confirmed: mapped.filter((registration) => registration.status === RegistrationStatus.CONFIRMED),
-    waitlisted: mapped.filter((registration) => registration.status === RegistrationStatus.WAITLISTED),
+    confirmed: mapped.filter((registration: ReturnType<typeof publicRegistration>) => registration.status === RegistrationStatus.CONFIRMED),
+    waitlisted: mapped.filter((registration: ReturnType<typeof publicRegistration>) => registration.status === RegistrationStatus.WAITLISTED),
   });
 });
 
@@ -1485,10 +1576,10 @@ app.patch('/api/events/:id', requireAuth, requireRole(Role.ORGANIZER), async (re
 
     const event = await prisma.$transaction(async (tx: any) => {
       const existing = await tx.event.findFirst({
-        where: { id: eventId, organizationId: access.organization.id },
+        where: { id: eventId, organizationId: access.organization.id, organizerId: req.user!.sub },
       });
       if (!existing) throw new Error('Event not found');
-      if (existing.status === EventStatus.CANCELLED || existing.status === EventStatus.CLOSED) {
+      if (!isEventStillOpen(existing)) {
         throw new Error('Event is not editable');
       }
 
@@ -1555,10 +1646,13 @@ app.patch('/api/events/:id/cancel', requireAuth, requireRole(Role.ORGANIZER), as
 
     const event = await prisma.$transaction(async (tx: any) => {
       const existing = await tx.event.findFirst({
-        where: { id: eventId, organizationId: access.organization.id },
+        where: { id: eventId, organizationId: access.organization.id, organizerId: req.user!.sub },
       });
       if (!existing) throw new Error('Event not found');
       if (existing.status === EventStatus.CANCELLED) return existing;
+      if (!isEventStillOpen(existing)) {
+        throw new Error('Event is not cancellable');
+      }
 
       const activeRegistrations = await tx.registration.findMany({
         where: { eventId, status: { in: [RegistrationStatus.CONFIRMED, RegistrationStatus.WAITLISTED] } },
@@ -1591,6 +1685,9 @@ app.patch('/api/events/:id/cancel', requireAuth, requireRole(Role.ORGANIZER), as
   } catch (error) {
     if (error instanceof Error && error.message === 'Event not found') {
       return res.status(404).json({ error: 'Event not found.' });
+    }
+    if (error instanceof Error && error.message === 'Event is not cancellable') {
+      return res.status(409).json({ error: 'Event is not open and cannot be cancelled.' });
     }
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });

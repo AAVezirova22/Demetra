@@ -69,12 +69,11 @@ export default function Login({ onBackToHome, onNavigateToRegister, onAuthentica
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   required
-                  minLength={8}
                   maxLength={128}
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 8 characters"
+                  placeholder="Your password"
                 />
                 <button
                   type="button"

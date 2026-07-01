@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
+import { ArrowRight, Bell, Boxes, CalendarDays, Database, Network, Server, ShieldCheck, UserPlus, UsersRound } from 'lucide-react';
 import { Navbar } from '../widgets/navbar';
 import { Register, Login, JoinInvitation } from '../features/auth'; 
 import { ClickSpark } from '../shared/ui'; 
@@ -17,6 +18,29 @@ gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join' | 'profile';
 const VIEW_KEY = 'demetra.currentView';
 const demetraBackgroundUrl = `${import.meta.env.BASE_URL}demetraBackground2.png`;
+
+const dockerStack = [
+  { name: 'frontend', detail: 'Vite app', port: '5173', icon: Boxes },
+  { name: 'api', detail: 'Node backend', port: '3000', icon: Server },
+  { name: 'nginx', detail: 'Gateway', port: '8080', icon: Network },
+  { name: 'db', detail: 'MySQL 8.4', port: 'internal', icon: Database },
+  { name: 'redis', detail: 'Redis 7', port: 'internal', icon: Server },
+  { name: 'adminer', detail: 'Database UI', port: '8081', icon: Database },
+];
+
+const landingStats = [
+  { value: '7', label: 'Compose services', detail: 'Frontend, API, worker, gateway, database, Redis, Adminer' },
+  { value: '4', label: 'Public entry points', detail: '5173 app, 3000 API, 8080 gateway, 8081 Adminer' },
+  { value: '2', label: 'Data systems', detail: 'MySQL for records and Redis for worker broadcasts' },
+  { value: '5s', label: 'DB health interval', detail: 'MySQL readiness check before dependent services start' },
+];
+
+const landingCapabilities = [
+  { icon: CalendarDays, title: 'Events and capacity', text: 'Publish open events, set venue capacity, update still-open events, and keep registration counts visible.' },
+  { icon: UsersRound, title: 'People and roles', text: 'Students, teachers, organization owners, and invited members each get the right dashboard access.' },
+  { icon: Bell, title: 'Notifications', text: 'In-app notifications are mirrored through email when SMTP is configured for the backend worker.' },
+  { icon: ShieldCheck, title: 'Login protection', text: 'Repeated wrong passwords warn after the third attempt and lock login after the fifth attempt.' },
+];
 
 function getStoredView(): AppView {
   const value = localStorage.getItem(VIEW_KEY);
@@ -54,6 +78,23 @@ export default function App() {
       .fromTo('.mountBg', { y: -10 }, { y: -100 }, 0)
       .fromTo('.mountMg', { y: -30 }, { y: -250 }, 0)
       .fromTo('.mountFg', { y: -50 }, { y: -600 }, 0);
+
+      gsap.utils.toArray<HTMLElement>('.landing-reveal').forEach((section) => {
+        gsap.fromTo(section,
+          { autoAlpha: 0, y: 46 },
+          {
+            autoAlpha: 1,
+            y: 0,
+            duration: 0.85,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: section,
+              start: 'top 78%',
+              toggleActions: 'play none none reverse',
+            },
+          }
+        );
+      });
 
       const btn = arrowRef.current;
       if (btn) {
@@ -179,7 +220,7 @@ export default function App() {
           left: 0,
           width: '100vw',
           minHeight: '100vh',
-          height: currentView === 'home' ? '300vh' : 'auto',
+          height: currentView === 'home' ? '520vh' : 'auto',
           overflow: currentView === 'home' ? undefined : 'visible',
         }}
       >
@@ -196,7 +237,7 @@ export default function App() {
           <>
             <div className="scrollDist"></div>
             
-            <main style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', maxWidth: 'none', transform: 'none' }}>
+            <main className="home-parallax-stage">
               <svg 
                 viewBox="0 0 1200 800" 
                 xmlns="http://www.w3.org/2000/svg"
@@ -232,7 +273,7 @@ export default function App() {
                 />                
                 
                 <g mask="url(#m)">
-                  <rect fill="#fff" width="100%" height="100%" />      
+                  <rect fill="#fff" width="100%" height="100%" />
                   <text className="main-title" x="50%" y="220" textAnchor="middle" fill="#162a43">School events</text>
                 </g>
                 
@@ -248,6 +289,86 @@ export default function App() {
                 />
               </svg>
             </main>
+
+            <section className="landing-content" aria-label="Demetra system">
+              <div className="landing-band landing-command landing-reveal">
+                <div className="stack-copy">
+                  <span className="landing-kicker">Operational view</span>
+                  <h2>One school events system, running as a real service stack.</h2>
+                  <p>
+                    Demetra is more than a landing page: the local setup defines the app shell, API, database,
+                    queue worker, gateway, and admin tools needed to run the school event workflow.
+                  </p>
+                  <div className="landing-actions">
+                    <button type="button" className="landing-primary" onClick={() => handleNavigate('register')}>
+                      <UserPlus size={17} />
+                      Join us
+                    </button>
+                    <button type="button" className="landing-secondary" onClick={() => handleNavigate('events')}>
+                      See events
+                      <ArrowRight size={17} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="landing-stat-board" aria-label="Docker Compose stats">
+                  {landingStats.map((stat) => (
+                    <div className="landing-stat" key={stat.label}>
+                      <b>{stat.value}</b>
+                      <span>{stat.label}</span>
+                      <p>{stat.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="landing-band landing-service-section landing-reveal">
+                <div className="landing-section-head">
+                  <span className="landing-kicker">From docker-compose.yml</span>
+                  <h2>Services, ports, and responsibilities.</h2>
+                </div>
+                <div className="stack-service-grid" aria-label="Docker Compose services">
+                  {dockerStack.map(({ name, detail, port, icon: Icon }) => (
+                    <div className="stack-service-card" key={name}>
+                      <Icon size={22} />
+                      <div>
+                        <b>{name}</b>
+                        <span>{detail}</span>
+                      </div>
+                      <em>{port}</em>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="landing-band landing-capabilities landing-reveal">
+                <div className="landing-section-head">
+                  <span className="landing-kicker">What the system handles</span>
+                  <h2>Useful details for organizers and students.</h2>
+                </div>
+                <div className="landing-capability-grid">
+                  {landingCapabilities.map(({ icon: Icon, title, text }) => (
+                    <article className="landing-capability" key={title}>
+                      <Icon size={24} />
+                      <h3>{title}</h3>
+                      <p>{text}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+
+              <div className="landing-band landing-join-panel landing-reveal">
+                <div>
+                  <span className="landing-kicker">Start using it</span>
+                  <h2>Join the school event workspace.</h2>
+                  <p>Create an account, browse published events, or start organizing if you are a teacher.</p>
+                </div>
+                <button type="button" className="landing-primary landing-join-btn" onClick={() => handleNavigate('register')}>
+                  <UserPlus size={18} />
+                  Join us
+                </button>
+              </div>
+            </section>
           </>
         )}
 
