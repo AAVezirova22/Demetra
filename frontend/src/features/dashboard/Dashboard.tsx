@@ -896,16 +896,20 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     markAllNotificationsRead(auth.token).catch(() => undefined);
   };
 
-  const makeOrganizer = async (member: OrganizationMember) => {
+  const updateMemberRole = async (member: OrganizationMember, role: AuthRole) => {
     const auth = getStoredAuth();
     if (!auth || !canManageOrganization) return;
     try {
-      await updateOrganizationMemberRole(auth.token, member.id, 'ORGANIZER');
+      await updateOrganizationMemberRole(auth.token, member.id, role);
       refreshOrganization();
     } catch (err) {
       setEventsError(err instanceof Error ? err.message : 'Could not update member role.');
     }
   };
+
+  const makeOrganizer = (member: OrganizationMember) => updateMemberRole(member, 'ORGANIZER');
+
+  const demoteOrganizer = (member: OrganizationMember) => updateMemberRole(member, 'STUDENT');
 
   const saveLayout = (l: StageLayout) => {
     setLayouts(prev => prev.find(x => x.id === l.id) ? prev.map(x => x.id === l.id ? l : x) : [...prev, l]);
@@ -1237,6 +1241,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                         <span className="member-joined-date">Joined {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(s.joinedAt))}</span>
                         {canManageOrganization && s.role === 'ORGANIZER' && s.membershipRole !== 'ORGANIZER' && s.status !== 'OWNER' && (
                           <button type="button" className="dash-action-btn" onClick={() => makeOrganizer(s)}>Make organizer</button>
+                        )}
+                        {canManageOrganization && s.membershipRole === 'ORGANIZER' && s.status !== 'OWNER' && s.id !== currentUser?.id && (
+                          <button type="button" className="dash-action-btn dash-action-btn--danger" onClick={() => demoteOrganizer(s)}>Demote to teacher</button>
                         )}
                       </div>
                     </div>
