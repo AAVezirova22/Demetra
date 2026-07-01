@@ -54,6 +54,14 @@ function initials(name: string) {
 }
 
 const EVENT_COLORS = ['#4f8ef7', '#7c6df0', '#38b2ac', '#e8aa2e', '#e05c5c', '#48bb78'];
+const ORGANIZATION_KINDS = [
+  { value: 'MUSIC_SCHOOL', label: 'Music school' },
+  { value: 'CONSERVATORY', label: 'Conservatory' },
+  { value: 'UNIVERSITY_DEPARTMENT', label: 'University department' },
+  { value: 'CHOIR', label: 'Choir' },
+  { value: 'STUDENT_CLUB', label: 'Student club' },
+  { value: 'OTHER', label: 'Other' },
+];
 
 const INITIAL_LAYOUTS: StageLayout[] = [
   {
@@ -529,7 +537,7 @@ function InviteModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
         <div className="invite-section">
           <div className="invite-label">Recipient</div>
           <div className="invite-email-row">
-            <input type="email" placeholder="student@school.edu or leave blank for open link" value={emailInput} onChange={e => setEmailInput(e.target.value)} className="invite-email-input" />
+            <input type="email" placeholder={role === 'ORGANIZER' ? 'name@teacher.edu or leave blank' : 'name@student.edu or leave blank'} value={emailInput} onChange={e => setEmailInput(e.target.value)} className="invite-email-input" />
             <select className="invite-email-input invite-role-select" value={role} onChange={(e) => setRole(e.target.value as AuthRole)}>
               <option value="STUDENT">Student</option>
               <option value="ORGANIZER">Organizer</option>
@@ -630,6 +638,7 @@ function EmptyOrganizationDashboard({
   onUserUpdated: (user: AuthUser) => void;
 }) {
   const [organizationName, setOrganizationName] = useState('');
+  const [organizationKind, setOrganizationKind] = useState('MUSIC_SCHOOL');
   const [joinCode, setJoinCode] = useState('');
   const [createError, setCreateError] = useState('');
   const [joinError, setJoinError] = useState('');
@@ -656,7 +665,7 @@ function EmptyOrganizationDashboard({
     try {
       const result = await createOrganization(auth.token, {
         name: organizationName.trim(),
-        kind: 'OTHER',
+        kind: organizationKind,
       });
       storeAuth({ token: auth.token, user: result.user });
       onUserUpdated(result.user);
@@ -713,6 +722,18 @@ function EmptyOrganizationDashboard({
                 onChange={(event) => setOrganizationName(event.target.value)}
                 placeholder={`${currentUser.name}'s Studio`}
               />
+            </div>
+            <div className="form-group">
+              <label htmlFor="new-organization-kind">Organisation type</label>
+              <select
+                id="new-organization-kind"
+                value={organizationKind}
+                onChange={(event) => setOrganizationKind(event.target.value)}
+              >
+                {ORGANIZATION_KINDS.map((kind) => (
+                  <option key={kind.value} value={kind.value}>{kind.label}</option>
+                ))}
+              </select>
             </div>
             {createError && <div className="auth-error">{createError}</div>}
             <button className="dash-create-btn empty-org-action" type="submit" disabled={creating}>

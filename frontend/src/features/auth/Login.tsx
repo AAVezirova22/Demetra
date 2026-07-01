@@ -58,7 +58,7 @@ export default function Login({ onBackToHome, onNavigateToRegister, onAuthentica
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@school.edu"
+                placeholder="name@student.edu or name@teacher.edu"
               />
             </div>
 

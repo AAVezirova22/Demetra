@@ -111,7 +111,7 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
             )}
 
             <div className="form-group">
-              <label htmlFor="email" className="required-label">{role === 'teacher' ? 'Work email' : 'Email'}</label>
+              <label htmlFor="email" className="required-label">{role === 'teacher' ? 'Teacher email' : 'Student email'}</label>
               <input
                 id="email"
                 type="email"
@@ -119,7 +119,7 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={role === 'teacher' ? 'teacher@studio.com' : 'you@school.edu'}
+                placeholder={role === 'teacher' ? 'name@teacher.edu' : 'name@student.edu'}
               />
             </div>
 

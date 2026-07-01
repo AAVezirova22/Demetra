@@ -159,7 +159,7 @@ export default function JoinInvitation({
               </div>
               <div className="form-group">
                 <label htmlFor="invite-email">Email</label>
-                <input id="invite-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@school.edu" disabled={Boolean(invitation.email)} />
+                <input id="invite-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@student.edu" disabled={Boolean(invitation.email)} />
               </div>
               <div className="form-group">
                 <label htmlFor="invite-password">Password</label>
