@@ -115,6 +115,19 @@ export type NotificationRecord = {
   readAt: string | null;
 };
 
+export type OrganizationPost = {
+  id: string;
+  title: string;
+  body: string;
+  organizationId: string;
+  author?: {
+    id: string;
+    name: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type InvitationDetails = {
   token: string;
   email: string | null;
@@ -364,6 +377,26 @@ export async function createOrganization(token: string, input: { name: string; k
 
 export async function createInvitation(token: string, input: { email?: string; role: AuthRole }) {
   return apiRequest<{ invitation: OrganizationInvitation }>('/organization/invitations', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function listOrganizationPosts(token: string) {
+  return apiRequest<{ posts: OrganizationPost[] }>('/organization/posts', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function fetchOrganizationPost(token: string, postId: string) {
+  return apiRequest<{ post: OrganizationPost }>(`/organization/posts/${encodeURIComponent(postId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function createOrganizationPost(token: string, input: { title: string; body: string }) {
+  return apiRequest<{ post: OrganizationPost }>('/organization/posts', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(input),

@@ -4,14 +4,17 @@ import {
   createEvent,
   createInvitation,
   createOrganization,
+  createOrganizationPost,
   acceptInvitation,
   fetchOrganization,
+  fetchOrganizationPost,
   getStoredAuth,
   deleteStageLayout,
   listEvents,
   listEventRegistrations,
   listMyEvents,
   listNotifications,
+  listOrganizationPosts,
   listStageLayouts,
   markAllNotificationsRead,
   markNotificationRead,
@@ -22,6 +25,7 @@ import {
   type AuthUser,
   type EventRecord,
   type NotificationRecord,
+  type OrganizationPost,
   type OrganizationInvitation,
   type OrganizationMember,
   type RegistrationRecord,
@@ -37,6 +41,8 @@ interface DashboardProps {
   currentUser: AuthUser | null;
   onOpenInvitation: (token: string) => void;
   onUserUpdated: (user: AuthUser) => void;
+  openPostId?: string;
+  onPostOpened?: () => void;
 }
 
 // Types
@@ -576,6 +582,61 @@ function EventRegistrationsModal({ event, registrations, loading, error, onClose
     </div>
   );
 }
+
+function PostComposerModal({ onClose, onCreated }: {
+  onClose: () => void;
+  onCreated: (post: OrganizationPost) => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    const auth = getStoredAuth();
+    if (!auth) return;
+    setSaving(true);
+    setError('');
+    try {
+      const { post } = await createOrganizationPost(auth.token, {
+        title: title.trim(),
+        body: body.trim(),
+      });
+      onCreated(post);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not publish post.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-panel modal-panel--wide" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title">New post</h3>
+          <button className="modal-close" onClick={onClose}>x</button>
+        </div>
+        <div className="form-group">
+          <label>Title</label>
+          <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Post title" />
+        </div>
+        <div className="form-group">
+          <label>Text</label>
+          <textarea value={body} onChange={e => setBody(e.target.value)} rows={8} placeholder="Write the announcement..." />
+        </div>
+        {error && <div className="auth-error">{error}</div>}
+        <div className="modal-footer">
+          <button className="modal-btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="modal-btn-primary" onClick={submit} disabled={saving || title.trim().length < 2 || body.trim().length < 2}>
+            {saving ? 'Publishing...' : 'Publish post'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 function InviteModal({ onClose, onCreated }: { onClose: () => void; onCreated: (invite: OrganizationInvitation) => void }) {
   const [copied, setCopied] = useState<'link' | 'token' | null>(null);
   const [emailInput, setEmailInput] = useState('');
@@ -667,18 +728,26 @@ function NotificationPane({
   onMarkRead,
   onMarkAllRead,
   onOpenInvitation,
+  onOpenPost,
 }: {
   notifications: NotificationRecord[];
   unreadCount: number;
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
   onOpenInvitation: (token: string) => void;
+  onOpenPost: (postId: string) => void;
 }) {
   const openNotification = (notification: NotificationRecord) => {
     if (notification.status === 'UNREAD') onMarkRead(notification.id);
-    if (notification.type !== 'OrganizationInvite' || !notification.metadata || typeof notification.metadata !== 'object') return;
-    const token = (notification.metadata as { token?: unknown }).token;
-    if (typeof token === 'string') onOpenInvitation(token);
+    if (!notification.metadata || typeof notification.metadata !== 'object') return;
+    if (notification.type === 'OrganizationInvite') {
+      const token = (notification.metadata as { token?: unknown }).token;
+      if (typeof token === 'string') onOpenInvitation(token);
+    }
+    if (notification.type === 'OrganizationPostPublished') {
+      const postId = (notification.metadata as { postId?: unknown }).postId;
+      if (typeof postId === 'string') onOpenPost(postId);
+    }
   };
 
   return (
@@ -930,14 +999,16 @@ function EmptyOrganizationDashboard({
 }
 
 // Dashboard
-export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpenInvitation, onUserUpdated }: DashboardProps) {
-  const [section, setSection] = useState<'overview' | 'events' | 'students' | 'stages' | 'settings'>('overview');
+export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpenInvitation, onUserUpdated, openPostId = '', onPostOpened }: DashboardProps) {
+  const [section, setSection] = useState<'overview' | 'events' | 'news' | 'students' | 'stages' | 'settings'>('overview');
   const [showInvite, setShowInvite] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [showPostComposer, setShowPostComposer] = useState(false);
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingLayout, setEditingLayout] = useState<StageLayout | undefined>();
   const [layouts, setLayouts] = useState<StageLayout[]>([]);
   const [eventRecords, setEventRecords] = useState<EventRecord[]>([]);
+  const [dashboardOrganization, setDashboardOrganization] = useState<AuthUser['organization']>(currentUser?.organization ?? null);
   const [registrationEvent, setRegistrationEvent] = useState<EventRecord | null>(null);
   const [eventRegistrations, setEventRegistrations] = useState<RegistrationRecord[]>([]);
   const [registrationsLoading, setRegistrationsLoading] = useState(false);
@@ -945,8 +1016,11 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
+  const [posts, setPosts] = useState<OrganizationPost[]>([]);
+  const [selectedPost, setSelectedPost] = useState<OrganizationPost | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [eventsError, setEventsError] = useState('');
+  const [postsError, setPostsError] = useState('');
   const [layoutsError, setLayoutsError] = useState('');
   const [initialEventLayout, setInitialEventLayout] = useState<StageLayout | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
@@ -957,8 +1031,8 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     isOrganizer &&
     (currentMember?.status === 'OWNER' || currentMember?.membershipRole === 'ORGANIZER')
   );
-  const currentOrganizationName = currentUser?.organization?.name ?? 'Your organization';
-  const profileStorageKey = currentUser?.organization?.id ? `demetra.organizationProfile.${currentUser.organization.id}` : '';
+  const currentOrganizationName = dashboardOrganization?.name ?? 'Your organization';
+  const profileStorageKey = dashboardOrganization?.id ? `demetra.organizationProfile.${dashboardOrganization.id}` : '';
   const [profileOrganizationName, setProfileOrganizationName] = useState('');
   const [profileSubject, setProfileSubject] = useState('');
   const [profileLocation, setProfileLocation] = useState('');
@@ -966,13 +1040,18 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
   const [selectedMemberProfile, setSelectedMemberProfile] = useState<OrganizationMember | null>(null);
 
   useEffect(() => {
+    if (currentUser?.organization) setDashboardOrganization(currentUser.organization);
+  }, [currentUser?.organization]);
+
+  useEffect(() => {
     const auth = getStoredAuth();
-    if (!auth || !auth.user.organization) return;
+    if (!auth) return;
 
     const eventsRequest = auth.user.role === 'ORGANIZER' ? listMyEvents(auth.token) : listEvents();
     eventsRequest
       .then(({ events }) => {
-        setEventRecords(auth.user.role === 'ORGANIZER' ? events : events.filter(event => event.organization?.id === auth.user.organization?.id));
+        const organizationId = auth.user.organization?.id ?? currentUser?.organization?.id;
+        setEventRecords(auth.user.role === 'ORGANIZER' ? events : events.filter(event => !organizationId || event.organization?.id === organizationId));
         setEventsError('');
       })
       .catch((err) => {
@@ -980,7 +1059,8 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
       });
 
     fetchOrganization(auth.token)
-      .then(({ members, invitations }) => {
+      .then(({ organization, members, invitations }) => {
+        setDashboardOrganization(organization);
         setMembers(members);
         setInvitations(invitations);
       })
@@ -999,6 +1079,16 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
         setUnreadCount(0);
       });
 
+    listOrganizationPosts(auth.token)
+      .then(({ posts }) => {
+        setPosts(posts);
+        setPostsError('');
+      })
+      .catch((err) => {
+        setPosts([]);
+        setPostsError(err instanceof Error ? err.message : 'Could not load news.');
+      });
+
     listStageLayouts(auth.token)
       .then(({ layouts }) => {
         setLayouts(layouts);
@@ -1008,7 +1098,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
         setLayouts([]);
         setLayoutsError(err instanceof Error ? err.message : 'Could not load stage layouts.');
       });
-  }, []);
+  }, [currentUser?.organization?.id]);
 
   useEffect(() => {
     if (!profileStorageKey) return;
@@ -1044,7 +1134,8 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     const auth = getStoredAuth();
     if (!auth) return;
     fetchOrganization(auth.token)
-      .then(({ members, invitations }) => {
+      .then(({ organization, members, invitations }) => {
+        setDashboardOrganization(organization);
         setMembers(members);
         setInvitations(invitations);
       })
@@ -1150,6 +1241,41 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
       .finally(() => setRegistrationsLoading(false));
   };
 
+  const openPost = (postId: string) => {
+    const existing = posts.find(post => post.id === postId);
+    if (existing) {
+      setSelectedPost(existing);
+      setSection('news');
+      return;
+    }
+
+    const auth = getStoredAuth();
+    if (!auth) return;
+    setSection('news');
+    fetchOrganizationPost(auth.token, postId)
+      .then(({ post }) => {
+        setPosts(prev => prev.find(item => item.id === post.id) ? prev : [post, ...prev]);
+        setSelectedPost(post);
+        setPostsError('');
+      })
+      .catch((err) => {
+        setPostsError(err instanceof Error ? err.message : 'Could not open post.');
+      });
+  };
+
+  const addPost = (post: OrganizationPost) => {
+    setPosts(prev => [post, ...prev.filter(item => item.id !== post.id)]);
+    setSelectedPost(post);
+    setSection('news');
+    setPostsError('');
+  };
+
+  useEffect(() => {
+    if (!openPostId) return;
+    openPost(openPostId);
+    onPostOpened?.();
+  }, [openPostId]);
+
   const saveOrganizationProfile = () => {
     if (!profileStorageKey) return;
 
@@ -1173,6 +1299,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     { key: 'events' as const, label: 'My Events', icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.5"/><path d="M5 1v4M11 1v4M1 7h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
     )},
+    { key: 'news' as const, label: 'News', icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+    )},
     { key: 'students' as const, label: 'Participants', icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.5"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
     )},
@@ -1194,19 +1323,20 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     return null;
   }
 
-  if (!currentUser.organization) {
+  if (!dashboardOrganization) {
     return currentUser.role === 'ORGANIZER'
       ? <EmptyOrganizationDashboard currentUser={currentUser} onUserUpdated={onUserUpdated} />
       : null;
   }
 
   const organizationName = profileOrganizationName.trim() || currentOrganizationName;
-  const organizationType = titleCaseEnum(currentUser.organization?.kind);
+  const organizationType = titleCaseEnum(dashboardOrganization?.kind);
   const organizationInitials = initials(organizationName);
 
   return (
     <>
       {canManageOrganization && showInvite && <InviteModal onClose={() => setShowInvite(false)} onCreated={(invite) => { setInvitations(prev => [invite, ...prev]); refreshOrganization(); }} />}
+      {canManageOrganization && showPostComposer && <PostComposerModal onClose={() => setShowPostComposer(false)} onCreated={addPost} />}
       {canManageOrganization && showCreate && (
         <CreateEventModal
           layouts={layouts}
@@ -1371,6 +1501,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                     onMarkRead={markRead}
                     onMarkAllRead={markAllRead}
                     onOpenInvitation={onOpenInvitation}
+                    onOpenPost={openPost}
                   />
                 )}
 
@@ -1442,6 +1573,64 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* News */}
+          {section === 'news' && (
+            <div className="dash-section-content">
+              {selectedPost ? (
+                <>
+                  <div className="dash-page-header">
+                    <div>
+                      <div className="dash-breadcrumb">Dashboard / News</div>
+                      <h1 className="dash-page-title">{selectedPost.title}</h1>
+                    </div>
+                    <button className="dash-create-btn" onClick={() => setSelectedPost(null)}>Back to News</button>
+                  </div>
+                  <div className="dash-post-detail">
+                    <div className="dash-post-detail-meta">
+                      Posted by {selectedPost.author?.name ?? 'Organizer'} / {new Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(selectedPost.createdAt))}
+                    </div>
+                    <div className="dash-post-detail-body">
+                      {selectedPost.body.split(/\n{2,}/).map((paragraph, index) => (
+                        <p key={index}>{paragraph}</p>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="dash-page-header">
+                    <div><div className="dash-breadcrumb">Dashboard / News</div><h1 className="dash-page-title">News</h1></div>
+                    {canManageOrganization && <button className="dash-create-btn" onClick={() => setShowPostComposer(true)}>+ New Post</button>}
+                  </div>
+                  <div className="dash-events-full-list">
+                    {postsError && <div className="no-events-state">{postsError}</div>}
+                    {!postsError && posts.length === 0 && <div className="no-events-state">No news posts yet.</div>}
+                    {!postsError && posts.map((post, index) => {
+                      const color = EVENT_COLORS[index % EVENT_COLORS.length]!;
+                      return (
+                        <button key={post.id} type="button" className="dash-event-card-full dash-post-card" onClick={() => setSelectedPost(post)} style={{ '--ev-color': color } as any}>
+                          <div className="dash-event-card-accent" style={{ background: color }} />
+                          <div className="dash-event-card-full-body">
+                            <div className="dash-event-card-full-header">
+                              <div>
+                                <div className="dash-event-card-full-category" style={{ color }}>News</div>
+                                <div className="dash-event-card-full-title">{post.title}</div>
+                                <div className="dash-event-card-full-date">
+                                  {post.author?.name ?? 'Organizer'} / {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(post.createdAt))}
+                                </div>
+                              </div>
+                            </div>
+                            <p className="dash-post-preview">{post.body}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -1594,6 +1783,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                   onMarkRead={markRead}
                   onMarkAllRead={markAllRead}
                   onOpenInvitation={onOpenInvitation}
+                  onOpenPost={openPost}
                 />
               </div>
             </div>

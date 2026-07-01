@@ -60,6 +60,7 @@ model User {
   
   events        Event[]        @relation("OrganizerEvents")
   stageLayouts  StageLayout[]
+  organizationPosts OrganizationPost[]
   registrations Registration[]
   notifications Notification[]
   
@@ -91,6 +92,7 @@ model Organization {
   owner     User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   events    Event[]
   stageLayouts StageLayout[]
+  posts     OrganizationPost[]
   members   OrganizationMembership[]
   invitations OrganizationInvitation[]
 
@@ -115,6 +117,22 @@ model StageLayout {
   updatedAt      DateTime     @updatedAt
 
   @@index([organizationId, createdAt])
+}
+
+model OrganizationPost {
+  id             String       @id @default(uuid())
+  title          String
+  body           String       @db.Text
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  authorId       String
+  author         User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, createdAt])
+  @@index([authorId])
 }
 
 model OrganizationMembership {

@@ -197,6 +197,12 @@ type StageLayoutInput =
       seats: StageSeat[];
       stageShape: 'rect' | 'arc' | 'thrust';
     };
+type OrganizationPostInput =
+  | { error: string }
+  | {
+      title: string;
+      body: string;
+    };
 
 function base64Url(input: Buffer | string) {
   return Buffer.from(input).toString('base64url');
@@ -524,6 +530,16 @@ function parseStageLayoutInput(body: any): StageLayoutInput {
   };
 }
 
+function parseOrganizationPostInput(body: any): OrganizationPostInput {
+  const title = typeof body.title === 'string' ? body.title.trim().replace(/\s+/g, ' ') : '';
+  const bodyText = typeof body.body === 'string' ? body.body.trim() : '';
+
+  if (title.length < 2 || title.length > 160) return { error: 'Post title must be between 2 and 160 characters.' };
+  if (bodyText.length < 2 || bodyText.length > 10000) return { error: 'Post text must be between 2 and 10000 characters.' };
+
+  return { title, body: bodyText };
+}
+
 function publicProfile(user: {
   name: string;
   role: Role;
@@ -622,6 +638,23 @@ function publicRegistration(registration: any) {
           name: registration.user.name,
         }
       : undefined,
+  };
+}
+
+function publicOrganizationPost(post: any) {
+  return {
+    id: post.id,
+    title: post.title,
+    body: post.body,
+    organizationId: post.organizationId,
+    author: post.author
+      ? {
+          id: post.author.id,
+          name: post.author.name,
+        }
+      : undefined,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
   };
 }
 
@@ -967,6 +1000,90 @@ app.post('/api/organization/invitations', requireAuth, requireRole(Role.ORGANIZE
     }
 
     res.status(201).json({ invitation });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.get('/api/organization/posts', requireAuth, async (req, res) => {
+  const access = await getUserOrganizationAccess(req.user!.sub);
+  if (!access) return res.status(404).json({ error: 'Organization not found.' });
+
+  const posts = await prisma.organizationPost.findMany({
+    where: { organizationId: access.organization.id },
+    include: { author: { select: { id: true, name: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  res.json({ posts: posts.map(publicOrganizationPost) });
+});
+
+app.get('/api/organization/posts/:id', requireAuth, async (req, res) => {
+  const postId = typeof req.params.id === 'string' ? req.params.id : '';
+  if (!postId) return res.status(400).json({ error: 'Post id is required.' });
+
+  const access = await getUserOrganizationAccess(req.user!.sub);
+  if (!access) return res.status(404).json({ error: 'Organization not found.' });
+
+  const post = await prisma.organizationPost.findFirst({
+    where: { id: postId, organizationId: access.organization.id },
+    include: { author: { select: { id: true, name: true } } },
+  });
+
+  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  res.json({ post: publicOrganizationPost(post) });
+});
+
+app.post('/api/organization/posts', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const input = parseOrganizationPostInput(req.body);
+  if ('error' in input) return res.status(400).json({ error: input.error });
+
+  try {
+    const access = await getUserOrganizationAccess(req.user!.sub);
+    if (!access) return res.status(404).json({ error: 'Organization not found.' });
+    if (!access.canManage) return res.status(403).json({ error: 'You do not have access to this action.' });
+
+    const post = await prisma.$transaction(async (tx: any) => {
+      const created = await tx.organizationPost.create({
+        data: {
+          title: input.title,
+          body: input.body,
+          organizationId: access.organization.id,
+          authorId: req.user!.sub,
+        },
+        include: { author: { select: { id: true, name: true } } },
+      });
+
+      const organization = await tx.organization.findUnique({
+        where: { id: access.organization.id },
+        select: { ownerId: true },
+      });
+      const memberships = await tx.organizationMembership.findMany({
+        where: { organizationId: access.organization.id },
+        select: { userId: true },
+      });
+      const recipientIds = Array.from(new Set([
+        organization?.ownerId,
+        ...memberships.map((membership: { userId: string }) => membership.userId),
+      ].filter((userId): userId is string => typeof userId === 'string')));
+
+      if (recipientIds.length > 0) {
+        await tx.notification.createMany({
+          data: recipientIds.map((userId: string) => ({
+            userId,
+            type: 'OrganizationPostPublished',
+            title: `New post: ${created.title}`,
+            message: `${created.author.name} posted news in ${access.organization.name}.`,
+            metadata: { postId: created.id, organizationId: access.organization.id },
+          })),
+        });
+      }
+
+      return created;
+    });
+
+    res.status(201).json({ post: publicOrganizationPost(post) });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });

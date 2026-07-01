@@ -30,6 +30,7 @@ export default function App() {
   const [inviteToken, setInviteToken] = useState(initialInviteToken);
   const [currentView, setCurrentView] = useState<AppView>(() => initialInviteToken ? 'join' : getStoredView());
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => getStoredAuth()?.user ?? null);
+  const [dashboardPostId, setDashboardPostId] = useState('');
 
   const containerRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<SVGRectElement>(null);
@@ -143,6 +144,11 @@ export default function App() {
     setCurrentView('join');
   };
 
+  const handleOpenPost = (postId: string) => {
+    setDashboardPostId(postId);
+    setCurrentView('dashboard');
+  };
+
   const handleAuthenticated = (user: AuthUser) => {
     setCurrentUser(user);
     if (inviteToken && currentView === 'login') {
@@ -183,6 +189,7 @@ export default function App() {
           currentUser={currentUser}
           onLogout={handleLogout}
           onOpenInvitation={handleOpenInvitation}
+          onOpenPost={handleOpenPost}
         />
 
         {currentView === 'home' && (
@@ -287,6 +294,8 @@ export default function App() {
             currentUser={currentUser}
             onOpenInvitation={handleOpenInvitation}
             onUserUpdated={setCurrentUser}
+            openPostId={dashboardPostId}
+            onPostOpened={() => setDashboardPostId('')}
           />
         )}
 
