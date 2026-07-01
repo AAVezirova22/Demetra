@@ -1491,6 +1491,20 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                   </div>
                 ))}
               </div>
+              <div className="dash-overview-strip">
+                <div>
+                  <span>Organization</span>
+                  <b>{organizationName}</b>
+                </div>
+                <div>
+                  <span>Published capacity</span>
+                  <b>{dashboardEvents.reduce((total, event) => total + event.capacity, 0)} seats</b>
+                </div>
+                <div>
+                  <span>Confirmed registrations</span>
+                  <b>{dashboardEvents.reduce((total, event) => total + event.registered, 0)} students</b>
+                </div>
+              </div>
               {/* Two-column layout below stats */}
               <div className="overview-grid">
                 {/* Events card */}
