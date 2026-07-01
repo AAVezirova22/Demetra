@@ -221,6 +221,14 @@
   color: #607288;
 }
 
+.password-requirements {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: #607288;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 @media (max-width: 760px) {
   .register-container {
     display: block;

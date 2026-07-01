@@ -9,6 +9,19 @@ interface RegisterProps {
   onAuthenticated: (user: AuthUser) => void;
 }
 
+const PASSWORD_REQUIREMENTS = [
+  '8 to 128 characters',
+  'One uppercase letter',
+  'One lowercase letter',
+];
+
+function validatePassword(password: string) {
+  if (password.length < 8 || password.length > 128) return 'Password must be between 8 and 128 characters.';
+  if (!/[A-Z]/.test(password)) return 'Password must include at least one uppercase letter.';
+  if (!/[a-z]/.test(password)) return 'Password must include at least one lowercase letter.';
+  return '';
+}
+
 export default function Register({ onBackToHome, onNavigateToLogin, onAuthenticated }: RegisterProps) {
   const [role, setRole] = useState<'teacher' | 'student'>('teacher');
   const [teacherName, setTeacherName] = useState('');
@@ -22,6 +35,13 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -131,10 +151,12 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
                   type={showPassword ? 'text' : 'password'}
                   required
                   minLength={8}
+                  maxLength={128}
+                  pattern="(?=.*[a-z])(?=.*[A-Z]).{8,128}"
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 8 characters"
+                  placeholder="8+ chars, Aa, 0-9"
                 />
                 <button
                   type="button"
@@ -144,6 +166,11 @@ export default function Register({ onBackToHome, onNavigateToLogin, onAuthentica
                   {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
+              <ul className="password-requirements">
+                {PASSWORD_REQUIREMENTS.map((requirement) => (
+                  <li key={requirement}>{requirement}</li>
+                ))}
+              </ul>
             </div>
 
             {error && <div className="auth-message auth-message--error">{error}</div>}

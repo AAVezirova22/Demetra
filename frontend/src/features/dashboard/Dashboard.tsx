@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { Globe, Mail, MapPin, MoreHorizontal, Phone, X } from 'lucide-react';
 import {
+  cancelEvent,
   createEvent,
   createInvitation,
   createOrganization,
@@ -21,6 +22,7 @@ import {
   removeOrganizationMember,
   saveStageLayout as persistStageLayout,
   storeAuth,
+  updateEvent,
   updateOrganizationMemberRole,
   type AuthRole,
   type AuthUser,
@@ -115,11 +117,14 @@ function mapDashboardEvent(event: EventRecord, index: number) {
     id: event.id,
     title: event.title,
     date: formatEventDate(event.startsAt),
+    startsAt: event.startsAt,
     registered,
     capacity,
     status: isPast ? 'past' : isFull ? 'full' : 'open',
+    apiStatus: event.status,
     category: event.category ?? 'Event',
     color: EVENT_COLORS[index % EVENT_COLORS.length]!,
+    organizerId: event.organizer?.id,
   };
 }
 
@@ -401,23 +406,26 @@ function StageBuilderModal({ onClose, onSave, existing }: {
 }
 
 // Create Event Modal
-function CreateEventModal({ layouts, initialLayout, onClose, onCreated }: {
+function CreateEventModal({ layouts, initialLayout, existingEvent, onClose, onSaved }: {
   layouts: StageLayout[];
   initialLayout: StageLayout | null;
+  existingEvent?: EventRecord | null;
   onClose: () => void;
-  onCreated: (event: EventRecord) => void;
+  onSaved: (event: EventRecord) => void;
 }) {
   const [step, setStep] = useState(1);
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Concert');
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [location, setLocation] = useState(initialLayout?.venue ?? '');
+  const existingStartsAt = existingEvent?.startsAt ? new Date(existingEvent.startsAt) : null;
+  const [title, setTitle] = useState(existingEvent?.title ?? '');
+  const [category, setCategory] = useState(existingEvent?.category ?? 'Concert');
+  const [description, setDescription] = useState(existingEvent?.description ?? '');
+  const [date, setDate] = useState(existingStartsAt ? existingStartsAt.toISOString().slice(0, 10) : '');
+  const [time, setTime] = useState(existingStartsAt ? existingStartsAt.toTimeString().slice(0, 5) : '');
+  const [location, setLocation] = useState(existingEvent?.location ?? initialLayout?.venue ?? '');
   const [selectedLayout, setSelectedLayout] = useState<StageLayout | null>(initialLayout);
-  const [capacity, setCapacity] = useState(initialLayout ? initialLayout.seats.filter(seat => seat.status !== 'blocked').length : 120);
+  const [capacity, setCapacity] = useState(existingEvent?.capacity ?? (initialLayout ? initialLayout.seats.filter(seat => seat.status !== 'blocked').length : 120));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const isEditing = Boolean(existingEvent);
 
   const submit = async () => {
     const auth = getStoredAuth();
@@ -435,15 +443,18 @@ function CreateEventModal({ layouts, initialLayout, onClose, onCreated }: {
     setError('');
     try {
       const startsAt = date ? new Date(`${date}T${time || '00:00'}`).toISOString() : undefined;
-      const { event } = await createEvent(auth.token, {
+      const input = {
         title: title.trim(),
         description: description.trim(),
         category,
         startsAt,
         location: location.trim(),
         capacity,
-      });
-      onCreated(event);
+      };
+      const { event } = existingEvent
+        ? await updateEvent(auth.token, existingEvent.id, input)
+        : await createEvent(auth.token, input);
+      onSaved(event);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create event.');
@@ -458,7 +469,7 @@ function CreateEventModal({ layouts, initialLayout, onClose, onCreated }: {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-panel modal-panel--xl" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">Create New Event</h3>
+          <h3 className="modal-title">{isEditing ? 'Edit Event' : 'Create New Event'}</h3>
           <button className="modal-close" onClick={onClose}>x</button>
         </div>
 
@@ -520,7 +531,7 @@ function CreateEventModal({ layouts, initialLayout, onClose, onCreated }: {
           {step < 3 ? (
             <button className="modal-btn-primary" onClick={() => setStep(step + 1)} disabled={step === 1 && !title.trim()}>Continue</button>
           ) : (
-            <button className="modal-btn-primary" onClick={submit} disabled={!canPublish || saving}>{saving ? 'Publishing...' : 'Publish event'}</button>
+            <button className="modal-btn-primary" onClick={submit} disabled={!canPublish || saving}>{saving ? 'Saving...' : isEditing ? 'Save changes' : 'Publish event'}</button>
           )}
         </div>
       </div>
@@ -1024,8 +1035,10 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
   const [postsError, setPostsError] = useState('');
   const [layoutsError, setLayoutsError] = useState('');
   const [initialEventLayout, setInitialEventLayout] = useState<StageLayout | null>(null);
+  const [editingEvent, setEditingEvent] = useState<EventRecord | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [openEventCutoff] = useState(() => Date.now());
   const isOrganizer = currentUser?.role === 'ORGANIZER';
   const currentMember = members.find(member => member.id === currentUser?.id);
   const canManageOrganization = Boolean(
@@ -1231,12 +1244,42 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
 
   const openCreateEvent = (layout: StageLayout | null = null) => {
     setInitialEventLayout(layout);
+    setEditingEvent(null);
     setShowCreate(true);
   };
 
   const closeCreateEvent = () => {
     setShowCreate(false);
     setInitialEventLayout(null);
+    setEditingEvent(null);
+  };
+
+  const isEventEditable = (event: EventRecord) => {
+    const startsAt = event.startsAt ? new Date(event.startsAt) : null;
+    return event.status === 'PUBLISHED' && (!startsAt || startsAt.getTime() > openEventCutoff) && event.organizer?.id === currentUser?.id;
+  };
+
+  const openEditEvent = (eventId: string) => {
+    const event = eventRecords.find(item => item.id === eventId);
+    if (!event || !isEventEditable(event)) return;
+    setInitialEventLayout(null);
+    setEditingEvent(event);
+    setShowCreate(true);
+  };
+
+  const handleCancelEvent = async (eventId: string) => {
+    const auth = getStoredAuth();
+    const event = eventRecords.find(item => item.id === eventId);
+    if (!auth || !event || !isEventEditable(event)) return;
+    if (!window.confirm(`Cancel "${event.title}"? Registered participants will be notified.`)) return;
+
+    try {
+      const { event: cancelled } = await cancelEvent(auth.token, eventId);
+      setEventRecords(prev => prev.map(item => item.id === eventId ? cancelled : item));
+      setEventsError('');
+    } catch (err) {
+      setEventsError(err instanceof Error ? err.message : 'Could not cancel event.');
+    }
   };
 
   const openEventRegistrations = (eventId: string) => {
@@ -1360,8 +1403,11 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
         <CreateEventModal
           layouts={layouts}
           initialLayout={initialEventLayout}
+          existingEvent={editingEvent}
           onClose={closeCreateEvent}
-          onCreated={(event) => setEventRecords(prev => [event, ...prev])}
+          onSaved={(event) => setEventRecords(prev => editingEvent
+            ? prev.map(item => item.id === event.id ? event : item)
+            : [event, ...prev])}
         />
       )}
       {canManageOrganization && registrationEvent && (
@@ -1564,6 +1610,8 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                 {!eventsError && dashboardEvents.length === 0 && <div className="no-events-state">No events created yet.</div>}
                 {!eventsError && dashboardEvents.map(ev => {
                   const pct = Math.round((ev.registered / ev.capacity) * 100);
+                  const originalEvent = eventRecords.find(item => item.id === ev.id);
+                  const canEditEvent = originalEvent ? isEventEditable(originalEvent) : false;
                   return (
                     <div key={ev.id} className="dash-event-card-full" style={{ '--ev-color': ev.color } as any}>
                       <div className="dash-event-card-accent" style={{ background: ev.color }} />
@@ -1583,9 +1631,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                           <span className="capacity-pct-label">{ev.registered} / {ev.capacity}</span>
                         </div>
                         {canManageOrganization && <div className="dash-event-card-full-actions">
-                          <button className="dash-action-btn">Edit</button>
+                          <button className="dash-action-btn" onClick={() => openEditEvent(ev.id)} disabled={!canEditEvent}>Edit</button>
                           <button className="dash-action-btn" onClick={() => openEventRegistrations(ev.id)}>Registrations</button>
-                          <button className="dash-action-btn dash-action-btn--danger">{ev.status === 'past' ? 'Archive' : 'Cancel'}</button>
+                          <button className="dash-action-btn dash-action-btn--danger" onClick={() => handleCancelEvent(ev.id)} disabled={!canEditEvent}>Cancel</button>
                         </div>}
                       </div>
                     </div>
