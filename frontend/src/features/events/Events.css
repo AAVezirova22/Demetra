@@ -1187,6 +1187,23 @@
   }
 }
 
+/* Gold action accents */
+.event-tab.active {
+  background: #a79a0e !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.event-date,
+.event-price,
+.events-breadcrumbs {
+  color: #8f8110 !important;
+}
+
+.event-card:hover {
+  border-color: rgba(167,154,14,0.34) !important;
+}
+
 @media (max-width: 600px) {
   .event-detail-title {
     font-size: 22px;

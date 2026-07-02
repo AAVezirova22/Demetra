@@ -1384,3 +1384,41 @@
   color: #162a43;
 }
 
+/* Final navbar text treatment */
+.nav-link,
+.nav-btn,
+.nav-mobile-link,
+.nav-mobile-kicker,
+.nav-mobile-current,
+.nav-notification-header,
+.nav-notification-header button {
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em;
+}
+
+.nav-user,
+.nav-mobile-user,
+.nav-notification-title,
+.nav-notification-message,
+.nav-notification-empty {
+  text-transform: none !important;
+  letter-spacing: 0;
+}
+
+@media (max-width: 760px) {
+  .nav-container {
+    min-height: 68px;
+  }
+
+  .nav-mobile-panel,
+  .nav-mobile-panel.open {
+    max-height: calc(100dvh - 68px) !important;
+    overflow-y: auto !important;
+  }
+
+  .nav-mobile-link,
+  .nav-mobile-cta {
+    font-size: 12px !important;
+    letter-spacing: 0.08em;
+  }
+}

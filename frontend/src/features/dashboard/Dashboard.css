@@ -2724,4 +2724,47 @@
   border-color: #edf0f3 !important;
 }
 
+/* Gold action accents */
+.dash-org-avatar {
+  background: #a79a0e !important;
+  color: #ffffff !important;
+}
+
+.dash-create-btn,
+.modal-btn-primary,
+.invite-send-btn {
+  background: #a79a0e !important;
+  color: #ffffff !important;
+  border-color: #a79a0e !important;
+  box-shadow: none !important;
+}
+
+.dash-create-btn:hover,
+.modal-btn-primary:hover,
+.invite-send-btn:hover {
+  background: #887e0c !important;
+  border-color: #887e0c !important;
+  filter: none !important;
+}
+
+.dash-invite-btn {
+  color: #8f8110 !important;
+  border-color: rgba(167,154,14,0.48) !important;
+  background: rgba(167,154,14,0.06) !important;
+}
+
+.dash-invite-btn:hover {
+  color: #ffffff !important;
+  background: #a79a0e !important;
+  border-color: #a79a0e !important;
+}
+
+.dash-nav-item.active {
+  border-left-color: #a79a0e !important;
+}
+
+.dash-stat-card::after {
+  background: #a79a0e !important;
+}
+
 
