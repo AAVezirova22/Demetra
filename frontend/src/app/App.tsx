@@ -268,7 +268,11 @@ export default function App() {
                 <image className="cloud31" href="https://assets.codepen.io/721952/cloud3.png" width="1200" height="800"/>
                 
                 <text className="main-title" fill="#fff" x="50%" y="280" textAnchor="middle">DEMETRA</text>
-                <text className="hero-subtitle" fill="#fff" x="50%" y="322" textAnchor="middle">School concerts, recitals, and rehearsals in one place</text>
+                <text className="hero-subtitle hero-subtitle-desktop" fill="#fff" x="50%" y="322" textAnchor="middle">School concerts, recitals, and rehearsals in one place</text>
+                <text className="hero-subtitle hero-subtitle-mobile" fill="#fff" x="50%" y="318" textAnchor="middle">
+                  <tspan x="50%">School concerts, recitals,</tspan>
+                  <tspan x="50%" dy="20">and rehearsals in one place</tspan>
+                </text>
                 
                 <path 
                   className="arrow" 
@@ -282,7 +286,7 @@ export default function App() {
                 
                 <g mask="url(#m)">
                   <rect fill="#fff" width="100%" height="100%" />
-                  <text className="main-title" x="50%" y="300" textAnchor="middle" fill="#162a43">School events</text>
+                  <text className="main-title main-title-school" x="50%" y="300" textAnchor="middle" fill="#162a43">School events</text>
                 </g>
                 
                 <rect 

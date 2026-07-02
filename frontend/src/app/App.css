@@ -57,7 +57,7 @@ body, html {
 .scrollDist {
   position: relative;
   width: 100%;
-  height: 160vh;
+  height: 112vh;
   z-index: 1;
   pointer-events: none;
 }
@@ -80,6 +80,10 @@ svg text {
   letter-spacing: 3px;
   text-transform: uppercase;
   opacity: 0.92;
+}
+
+.hero-subtitle-mobile {
+  display: none;
 }
 
 .home-parallax-stage {
@@ -108,7 +112,7 @@ svg text {
   left: 0;
   z-index: 2;
   width: 100%;
-  padding: clamp(54px, 8vw, 104px) clamp(20px, 5vw, 72px) 92px;
+  padding: clamp(42px, 6vw, 76px) clamp(20px, 5vw, 72px) clamp(36px, 5vw, 56px);
   box-sizing: border-box;
   background: #ffffff;
 }
@@ -116,6 +120,10 @@ svg text {
 .landing-band {
   width: min(1120px, 100%);
   margin: 0 auto clamp(42px, 7vw, 86px);
+}
+
+.landing-band:last-child {
+  margin-bottom: 0;
 }
 
 .landing-desk,
@@ -747,8 +755,30 @@ svg text {
     letter-spacing: 7px;
   }
 
+  .main-title-school {
+    font-size: 34px;
+    letter-spacing: 2px;
+  }
+
+  .hero-subtitle {
+    font-size: 13px;
+    letter-spacing: 1.4px;
+  }
+
+  .hero-subtitle-desktop {
+    display: none;
+  }
+
+  .hero-subtitle-mobile {
+    display: block;
+  }
+
+  .scrollDist {
+    height: 84vh;
+  }
+
   .landing-content {
-    padding: 52px 16px 84px;
+    padding: 24px 16px 42px;
     background: #ffffff;
   }
 
