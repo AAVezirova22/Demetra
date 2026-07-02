@@ -493,6 +493,29 @@ function EventDetail({ event, registration, onBack, onNavigate, onRegistered, on
               </div>
             </div>
           </section>
+
+          {hasMappedLocation && (
+            <section className="event-detail-section event-map-section">
+              <h2 className="event-section-title">Location</h2>
+              <div className="event-map-card">
+                <div className="event-map-info">
+                  <div>
+                    <div className="event-map-name">{event.venue}</div>
+                    <div className="event-map-address">{event.location}</div>
+                  </div>
+                  <a href={getGoogleMapsSearchUrl(event.location)} target="_blank" rel="noreferrer">
+                    Open in Google Maps
+                  </a>
+                </div>
+                <iframe
+                  title={`${event.location} on Google Maps`}
+                  src={getGoogleMapsEmbedUrl(event.location)}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+            </section>
+          )}
         </div>
 
         {/* Sidebar */}
