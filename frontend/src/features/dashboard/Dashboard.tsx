@@ -154,7 +154,6 @@ function SeatMap({ layout, editable = false, onUpdate }: {
   const [seats, setSeats] = useState<Seat[]>(layout.seats);
   const [paintMode, setPaintMode] = useState<SeatStatus>('available');
   const [isPainting, setIsPainting] = useState(false);
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
 
   useEffect(() => {
     setSeats(layout.seats);
@@ -211,7 +210,7 @@ function SeatMap({ layout, editable = false, onUpdate }: {
         <svg
           viewBox={`0 0 ${totalW} ${totalH}`}
           style={{ width: '100%', maxWidth: totalW, display: 'block', margin: '0 auto' }}
-          onMouseLeave={() => { setIsPainting(false); setTooltip(null); }}
+          onMouseLeave={() => setIsPainting(false)}
         >
           {/* Stage */}
           {layout.stageShape === 'arc' ? (
@@ -256,11 +255,9 @@ function SeatMap({ layout, editable = false, onUpdate }: {
                 x={x} y={y} width={seatW} height={seatH} rx={3}
                 fill={colors.fill} stroke={colors.stroke} strokeWidth={0.8}
                 style={{ cursor: editable ? 'crosshair' : 'default', transition: 'fill 0.1s ease' }}
-                onMouseEnter={(e) => {
-                  setTooltip({ x: e.clientX, y: e.clientY, text: `Row ${String.fromCharCode(65 + seat.row)}, Seat ${seat.col + 1} / ${seat.status}` });
+                onMouseEnter={() => {
                   if (isPainting && editable) toggleSeat(seat.id);
                 }}
-                onMouseLeave={() => setTooltip(null)}
                 onMouseDown={() => { setIsPainting(true); toggleSeat(seat.id); }}
                 onMouseUp={() => setIsPainting(false)}
               />
@@ -268,12 +265,6 @@ function SeatMap({ layout, editable = false, onUpdate }: {
           })}
         </svg>
       </div>
-
-      {tooltip && (
-        <div className="seat-tooltip" style={{ left: tooltip.x + 12, top: tooltip.y - 28 }}>
-          {tooltip.text}
-        </div>
-      )}
 
       <div className="seatmap-legend">
         {[

@@ -1352,17 +1352,10 @@
 .seatmap-tool.active { border-color: var(--tool-color, rgb(167,154,14)); background: rgba(167,154,14,0.07); color: #162a43; }
 .seatmap-tool-dot { width: 12px; height: 10px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
 .seatmap-toolbar-hint { margin-left: auto; font-family: 'Inter', sans-serif; font-size: 11px; color: #a0aec0; font-style: italic; }
-.seatmap-scroll { overflow-x: auto; }
+.seatmap-scroll { overflow-x: auto; overflow-y: hidden; scrollbar-gutter: stable; }
 .seatmap-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(22,42,67,0.06); }
 .seatmap-legend-item { display: flex; align-items: center; gap: 5px; font-family: 'Inter', sans-serif; font-size: 11px; color: #5c6e85; }
 .legend-count { font-weight: 700; color: #162a43; }
-.seat-tooltip {
-  position: fixed; background: #162a43; color: #fff;
-  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500;
-  padding: 5px 10px; border-radius: 6px; pointer-events: none;
-  z-index: 999; white-space: nowrap; box-shadow: 0 4px 12px rgba(22,42,67,0.3);
-}
-
 /* ────────────────────────────────────────────────────────────────────
    DASHBOARD — nav with app-container :has selector
    ──────────────────────────────────────────────────────────────────── */

@@ -121,17 +121,17 @@ function ConcertHallLayout({ capacity, registered }: { capacity: number; registe
   let seatCounter = 0;
 
   return (
-    <svg viewBox="0 0 440 420" style={{ width: '100%', maxWidth: 440 }}>
+    <svg viewBox="0 0 440 420" style={{ width: '100%', maxWidth: 440 }} className="venue-chart-svg">
       {/* Stage */}
       <ellipse cx="220" cy="36" rx="100" ry="26" fill="rgb(167,154,14)" opacity="0.15" />
       <ellipse cx="220" cy="36" rx="100" ry="26" fill="none" stroke="rgb(167,154,14)" strokeWidth="1.5" />
-      <text x="220" y="40" textAnchor="middle" fill="rgb(167,154,14)" fontSize="11" fontFamily="Cinzel, serif" letterSpacing="2">STAGE</text>
+      <text x="220" y="40" textAnchor="middle" fill="rgb(167,154,14)" fontSize="9" fontFamily="Inter, sans-serif" fontWeight="800" letterSpacing="0">STAGE</text>
 
       {rows.map((row) => {
         const startX = 220 - (row.seats * 20) / 2 + 10;
         return row.seats > 0 ? (
           <g key={row.id}>
-            <text x="18" y={row.y + 6} textAnchor="middle" fill="#5c6e85" fontSize="9" fontFamily="Inter, sans-serif">{row.id}</text>
+            <text x="18" y={row.y + 5} textAnchor="middle" fill="#5c6e85" fontSize="7" fontFamily="Inter, sans-serif">{row.id}</text>
             {Array.from({ length: row.seats }).map((_, si) => {
               const taken = seatCounter++ < takenSeats;
               return (
@@ -154,9 +154,9 @@ function ConcertHallLayout({ capacity, registered }: { capacity: number; registe
 
       {/* Legend */}
       <rect x="120" y="384" width="12" height="10" rx="2" fill="rgba(167,154,14,0.35)" stroke="rgb(167,154,14)" strokeWidth="0.8" />
-      <text x="136" y="393" fill="#5c6e85" fontSize="10" fontFamily="Inter, sans-serif">Registered</text>
+      <text x="136" y="392" fill="#5c6e85" fontSize="8" fontFamily="Inter, sans-serif">Registered</text>
       <rect x="210" y="384" width="12" height="10" rx="2" fill="rgba(22,42,67,0.07)" stroke="rgba(22,42,67,0.18)" strokeWidth="0.8" />
-      <text x="226" y="393" fill="#5c6e85" fontSize="10" fontFamily="Inter, sans-serif">Available</text>
+      <text x="226" y="392" fill="#5c6e85" fontSize="8" fontFamily="Inter, sans-serif">Available</text>
     </svg>
   );
 }
@@ -172,11 +172,11 @@ function OutdoorLayout({ capacity, registered }: { capacity: number; registered:
   const takenFrac = registered / capacity;
 
   return (
-    <svg viewBox="0 0 440 400" style={{ width: '100%', maxWidth: 440 }}>
+    <svg viewBox="0 0 440 400" style={{ width: '100%', maxWidth: 440 }} className="venue-chart-svg">
       {/* Stage */}
       <rect x="140" y="30" width="160" height="60" rx="8" fill="rgb(167,154,14)" opacity="0.15" />
       <rect x="140" y="30" width="160" height="60" rx="8" fill="none" stroke="rgb(167,154,14)" strokeWidth="1.5" />
-      <text x="220" y="64" textAnchor="middle" fill="rgb(167,154,14)" fontSize="11" fontFamily="Cinzel, serif" letterSpacing="2">STAGE</text>
+      <text x="220" y="64" textAnchor="middle" fill="rgb(167,154,14)" fontSize="9" fontFamily="Inter, sans-serif" fontWeight="800" letterSpacing="0">STAGE</text>
 
       {/* Trees decoration */}
       {[40, 380].map((tx) => (
@@ -197,10 +197,10 @@ function OutdoorLayout({ capacity, registered }: { capacity: number; registered:
               fill="rgba(22,42,67,0.04)" stroke="rgba(22,42,67,0.15)" strokeWidth="1" />
             <rect x={sec.x} y={sec.y} width={sec.w * (pct / 100)} height={sec.h} rx="6"
               fill="rgba(167,154,14,0.18)" />
-            <text x={sec.x + sec.w / 2} y={sec.y + sec.h / 2 - 6} textAnchor="middle"
-              fill="#162a43" fontSize="10" fontFamily="Inter, sans-serif" fontWeight="600">{sec.label}</text>
-            <text x={sec.x + sec.w / 2} y={sec.y + sec.h / 2 + 8} textAnchor="middle"
-              fill="#5c6e85" fontSize="9" fontFamily="Inter, sans-serif">{secTaken}/{sec.seats}</text>
+            <text x={sec.x + sec.w / 2} y={sec.y + sec.h / 2 - 5} textAnchor="middle"
+              fill="#162a43" fontSize="7" fontFamily="Inter, sans-serif" fontWeight="700">{sec.label}</text>
+            <text x={sec.x + sec.w / 2} y={sec.y + sec.h / 2 + 7} textAnchor="middle"
+              fill="#5c6e85" fontSize="7" fontFamily="Inter, sans-serif">{secTaken}/{sec.seats}</text>
           </g>
         );
       })}
@@ -208,36 +208,37 @@ function OutdoorLayout({ capacity, registered }: { capacity: number; registered:
       {/* Back area */}
       <rect x="120" y="280" width="200" height="60" rx="6"
         fill="rgba(22,42,67,0.04)" stroke="rgba(22,42,67,0.12)" strokeWidth="1" strokeDasharray="4 3" />
-      <text x="220" y="315" textAnchor="middle" fill="#a0aec0" fontSize="10" fontFamily="Inter, sans-serif">Standing Area (free)</text>
+      <text x="220" y="314" textAnchor="middle" fill="#a0aec0" fontSize="7" fontFamily="Inter, sans-serif">Standing area</text>
     </svg>
   );
 }
 
 function ClassroomLayout({ capacity, registered }: { capacity: number; registered: number }) {
-  const rows = 4;
-  const cols = Math.ceil(capacity / rows);
+  const rows = 5;
+  const cols = 12;
+  const visualSeats = rows * cols;
   const takenFrac = registered / capacity;
-  const takenCount = Math.round(capacity * takenFrac);
+  const takenCount = Math.round(visualSeats * takenFrac);
 
   return (
-    <svg viewBox="0 0 440 360" style={{ width: '100%', maxWidth: 440 }}>
+    <svg viewBox="0 0 440 360" style={{ width: '100%', maxWidth: 440 }} className="venue-chart-svg">
       {/* Board */}
       <rect x="80" y="28" width="280" height="44" rx="4" fill="rgba(22,42,67,0.08)" stroke="rgba(22,42,67,0.2)" strokeWidth="1.5" />
-      <text x="220" y="55" textAnchor="middle" fill="#162a43" fontSize="11" fontFamily="Cinzel, serif" letterSpacing="1">PRESENTER</text>
+      <text x="220" y="54" textAnchor="middle" fill="#162a43" fontSize="9" fontFamily="Inter, sans-serif" fontWeight="800" letterSpacing="0">PRESENTER</text>
 
       {/* Seats */}
       {Array.from({ length: rows }).map((_, ri) => (
         Array.from({ length: cols }).map((_, ci) => {
           const seatIdx = ri * cols + ci;
           const taken = seatIdx < takenCount;
-          const x = 60 + ci * (320 / cols);
-          const y = 110 + ri * 56;
+          const x = 50 + ci * 28;
+          const y = 104 + ri * 42;
           return (
             <g key={`${ri}-${ci}`}>
-              <rect x={x} y={y} width="28" height="22" rx="3"
+              <rect x={x} y={y} width="18" height="15" rx="2"
                 fill={taken ? 'rgba(167,154,14,0.3)' : 'rgba(22,42,67,0.06)'}
                 stroke={taken ? 'rgb(167,154,14)' : 'rgba(22,42,67,0.18)'} strokeWidth="0.8" />
-              <rect x={x + 4} y={y + 22} width="20" height="10" rx="2"
+              <rect x={x + 3} y={y + 15} width="12" height="7" rx="1.5"
                 fill={taken ? 'rgba(167,154,14,0.2)' : 'rgba(22,42,67,0.04)'}
                 stroke={taken ? 'rgba(167,154,14,0.5)' : 'rgba(22,42,67,0.12)'} strokeWidth="0.6" />
             </g>

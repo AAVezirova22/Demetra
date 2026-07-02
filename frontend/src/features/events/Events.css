@@ -558,6 +558,15 @@
   margin-bottom: 16px;
 }
 
+.venue-chart-svg {
+  shape-rendering: geometricPrecision;
+  text-rendering: geometricPrecision;
+}
+
+.venue-chart-svg text {
+  letter-spacing: 0;
+}
+
 .capacity-bar-wrapper {
   display: flex;
   align-items: center;
