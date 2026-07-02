@@ -38,7 +38,11 @@
 
 </div>
 
+<div align="center">
+  
 ## 📁 Project structure
+  
+</div>
 
 ```
 backend/    Express API, Socket.IO server, outbox worker, SMTP email
