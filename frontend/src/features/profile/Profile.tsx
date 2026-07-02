@@ -19,6 +19,7 @@ const AVATAR_MAX_DATA_URL_LENGTH = 900_000;
 interface ProfileProps {
   currentUser: AuthUser;
   onUserUpdated: (user: AuthUser) => void;
+  onOpenEvent: (eventId: string) => void;
 }
 
 function fallbackProfile(user: AuthUser): UserProfile {
@@ -107,7 +108,7 @@ async function compressAvatar(file: File) {
   throw new Error('That image is too large to use as a profile picture.');
 }
 
-export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
+export default function Profile({ currentUser, onUserUpdated, onOpenEvent }: ProfileProps) {
   const [profile, setProfile] = useState<UserProfile>(() => fallbackProfile(currentUser));
   const [registrations, setRegistrations] = useState<RegistrationRecord[]>([]);
   const [saved, setSaved] = useState(false);
@@ -297,7 +298,7 @@ export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
           </div>
         </section>
 
-        <section className="profile-card">
+        <section className="profile-card profile-card--contact">
           <div className="profile-card-heading">
             <h2>Contact</h2>
             <p>These fields are optional.</p>
@@ -325,7 +326,12 @@ export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
           <div className="profile-event-list">
             {registrations.length === 0 && <div className="profile-event-empty">No active event registrations.</div>}
             {registrations.map((registration) => (
-              <div className="profile-event-row" key={registration.id}>
+              <button
+                type="button"
+                className="profile-event-row"
+                key={registration.id}
+                onClick={() => onOpenEvent(registration.eventId)}
+              >
                 <div>
                   <div className="profile-event-title">{registration.event?.title ?? 'Event'}</div>
                   <div className="profile-event-meta">
@@ -338,7 +344,7 @@ export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
                     ? `Waitlist #${registration.waitlistPosition ?? '-'}`
                     : 'Confirmed'}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </section>

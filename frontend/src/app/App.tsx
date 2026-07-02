@@ -434,6 +434,7 @@ export default function App() {
           <Profile
             currentUser={currentUser}
             onUserUpdated={setCurrentUser}
+            onOpenEvent={handleOpenEvent}
           />
         )}
       </div>
