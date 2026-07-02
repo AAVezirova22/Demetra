@@ -668,6 +668,7 @@ function publicRegistration(registration: any) {
     status: registration.status,
     userId: registration.userId,
     eventId: registration.eventId,
+    waitlistPosition: registration.waitlistPosition ?? null,
     createdAt: registration.createdAt,
     updatedAt: registration.updatedAt,
     event: registration.event
@@ -684,6 +685,30 @@ function publicRegistration(registration: any) {
         }
       : undefined,
   };
+}
+
+async function withWaitlistPositions(registrations: any[], client: any = prisma) {
+  const waitlisted = registrations.filter((registration) => registration.status === RegistrationStatus.WAITLISTED);
+  if (waitlisted.length === 0) {
+    return registrations.map((registration) => ({ ...registration, waitlistPosition: null }));
+  }
+
+  const positions = new Map<string, number>();
+  await Promise.all(waitlisted.map(async (registration) => {
+    const position = await client.registration.count({
+      where: {
+        eventId: registration.eventId,
+        status: RegistrationStatus.WAITLISTED,
+        createdAt: { lte: registration.createdAt },
+      },
+    });
+    positions.set(registration.id, position);
+  }));
+
+  return registrations.map((registration) => ({
+    ...registration,
+    waitlistPosition: positions.get(registration.id) ?? null,
+  }));
 }
 
 function publicOrganizationPost(post: any) {
@@ -1456,8 +1481,11 @@ app.get('/api/events', async (_, res) => {
 });
 
 app.get('/api/events/my', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
+  const access = await getUserOrganizationAccess(req.user!.sub);
   const events = await prisma.event.findMany({
-    where: { organizerId: req.user!.sub },
+    where: access?.organization?.id
+      ? { organizationId: access.organization.id }
+      : { organizerId: req.user!.sub },
     include: {
       organizer: { select: { id: true, name: true } },
       organization: { select: { id: true, name: true, kind: true } },
@@ -1474,7 +1502,7 @@ app.get('/api/events/my', requireAuth, requireRole(Role.ORGANIZER), async (req, 
   });
 });
 
-app.get('/api/registrations/my', requireAuth, requireRole(Role.STUDENT), async (req, res) => {
+app.get('/api/registrations/my', requireAuth, async (req, res) => {
   const registrations = await prisma.registration.findMany({
     where: { userId: req.user!.sub },
     include: {
@@ -1489,7 +1517,8 @@ app.get('/api/registrations/my', requireAuth, requireRole(Role.STUDENT), async (
     orderBy: { createdAt: 'desc' },
   });
 
-  res.json({ registrations: registrations.map(publicRegistration) });
+  const registrationsWithPositions = await withWaitlistPositions(registrations);
+  res.json({ registrations: registrationsWithPositions.map(publicRegistration) });
 });
 
 app.get('/api/events/:id/registrations', requireAuth, requireRole(Role.ORGANIZER), async (req, res) => {
@@ -1708,7 +1737,7 @@ app.patch('/api/events/:id/cancel', requireAuth, requireRole(Role.ORGANIZER), as
 });
 
 // Event Registration Endpoint (Concurrency Safe)
-app.post('/api/register', requireAuth, requireRole(Role.STUDENT), async (req, res) => {
+app.post('/api/register', requireAuth, async (req, res) => {
   const userId = req.user!.sub;
   const { eventId } = req.body;
 
@@ -1777,7 +1806,8 @@ app.post('/api/register', requireAuth, requireRole(Role.STUDENT), async (req, re
       return newRegistration;
     });
 
-    res.json({ success: true, registration });
+    const [registrationWithPosition] = await withWaitlistPositions([registration]);
+    res.json({ success: true, registration: publicRegistration(registrationWithPosition) });
   } catch (error: any) {
     console.error(error);
     if (error instanceof Error && error.message === 'Already registered') {
@@ -1793,7 +1823,7 @@ app.post('/api/register', requireAuth, requireRole(Role.STUDENT), async (req, re
   }
 });
 
-app.delete('/api/events/:id/registration', requireAuth, requireRole(Role.STUDENT), async (req, res) => {
+app.delete('/api/events/:id/registration', requireAuth, async (req, res) => {
   const userId = req.user!.sub;
   const eventId = typeof req.params.id === 'string' ? req.params.id : '';
   if (!eventId) return res.status(400).json({ error: 'Event id is required.' });

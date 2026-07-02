@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
 import {
   cancelEventRegistration,
   getStoredAuth,
@@ -6,6 +7,7 @@ import {
   listMyRegistrations,
   registerForEvent,
   type EventRecord,
+  type RegistrationRecord,
   type RegistrationStatus,
 } from '../../shared/api/api';
 import './Events.css';
@@ -248,14 +250,15 @@ function ClassroomLayout({ capacity, registered }: { capacity: number; registere
 
 // Event Detail Page
 
-function EventDetail({ event, registrationStatus, onBack, onNavigate, onRegistered, onCancelled }: {
+function EventDetail({ event, registration, onBack, onNavigate, onRegistered, onCancelled }: {
   event: Event;
-  registrationStatus: RegistrationStatus | null;
+  registration: RegistrationRecord | null;
   onBack: () => void;
   onNavigate: EventsProps['onNavigate'];
-  onRegistered: (eventId: string, status: RegistrationStatus) => void;
+  onRegistered: (eventId: string, registration: RegistrationRecord) => void;
   onCancelled: (eventId: string, previousStatus: RegistrationStatus, promoted: boolean) => void;
 }) {
+  const registrationStatus = registration?.status ?? null;
   const [joinState, setJoinState] = useState<'idle' | 'joining' | 'joined' | 'waitlist' | 'cancelling'>(
     registrationStatus === 'CONFIRMED' ? 'joined' : registrationStatus === 'WAITLISTED' ? 'waitlist' : 'idle'
   );
@@ -281,7 +284,7 @@ function EventDetail({ event, registrationStatus, onBack, onNavigate, onRegister
     try {
       const { registration } = await registerForEvent(auth.token, event.id);
       setJoinState(registration.status === 'WAITLISTED' ? 'waitlist' : 'joined');
-      onRegistered(event.id, registration.status);
+      onRegistered(event.id, registration);
     } catch (err) {
       setJoinState('idle');
       setJoinError(err instanceof Error ? err.message : 'Could not register for this event.');
@@ -443,8 +446,9 @@ function EventDetail({ event, registrationStatus, onBack, onNavigate, onRegister
             ) : joinState === 'waitlist' ? (
               <>
                 <div className="join-success join-success--waitlist">
-                  <span>Waitlist</span> Added to waitlist
+                  <span>Waitlist</span> Position #{registration?.waitlistPosition ?? '-'}
                 </div>
+                <p className="join-waitlist-note">Your position updates automatically when places open.</p>
                 <button className="join-btn join-btn--waitlist" onClick={handleCancel} style={{ marginTop: 10 }}>Leave waitlist</button>
               </>
             ) : joinState === 'cancelling' ? (
@@ -517,11 +521,32 @@ export default function Events({ onNavigate, openEventId = '', onEventOpened }: 
   const [isLoading, setIsLoading] = useState(true);
   const [eventsError, setEventsError] = useState('');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [registrationsByEvent, setRegistrationsByEvent] = useState<Record<string, RegistrationStatus>>({});
+  const [registrationsByEvent, setRegistrationsByEvent] = useState<Record<string, RegistrationRecord>>({});
+  const registrationsByEventRef = useRef<Record<string, RegistrationRecord>>({});
+
+  useEffect(() => {
+    registrationsByEventRef.current = registrationsByEvent;
+  }, [registrationsByEvent]);
+
+  const refreshRegistrations = useCallback(() => {
+    const auth = getStoredAuth();
+    if (!auth) {
+      setRegistrationsByEvent({});
+      return;
+    }
+
+    listMyRegistrations(auth.token)
+      .then(({ registrations }) => {
+        const activeRegistrations = registrations.filter(registration => registration.status !== 'CANCELLED');
+        setRegistrationsByEvent(Object.fromEntries(activeRegistrations.map(registration => [registration.eventId, registration])));
+      })
+      .catch(() => {
+        setRegistrationsByEvent({});
+      });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    const auth = getStoredAuth();
     listEvents()
       .then(({ events }) => {
         if (cancelled) return;
@@ -536,22 +561,33 @@ export default function Events({ onNavigate, openEventId = '', onEventOpened }: 
         if (!cancelled) setIsLoading(false);
       });
 
-    if (auth?.user.role === 'STUDENT') {
-      listMyRegistrations(auth.token)
-        .then(({ registrations }) => {
-          if (cancelled) return;
-          const activeRegistrations = registrations.filter(registration => registration.status !== 'CANCELLED');
-          setRegistrationsByEvent(Object.fromEntries(activeRegistrations.map(registration => [registration.eventId, registration.status])));
-        })
-        .catch(() => {
-          if (!cancelled) setRegistrationsByEvent({});
-        });
-    }
+    refreshRegistrations();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshRegistrations]);
+
+  useEffect(() => {
+    const socket = io({ path: '/socket.io' });
+    const refreshIfRelevant = (payload: { eventId?: unknown }) => {
+      if (typeof payload.eventId !== 'string') return;
+      if (selectedEventId === payload.eventId || registrationsByEventRef.current[payload.eventId]) {
+        refreshRegistrations();
+      }
+    };
+
+    socket.on('RegistrationCancelled', refreshIfRelevant);
+    socket.on('WaitlistPromoted', refreshIfRelevant);
+    socket.on('RegistrationWaitlisted', refreshIfRelevant);
+
+    return () => {
+      socket.off('RegistrationCancelled', refreshIfRelevant);
+      socket.off('WaitlistPromoted', refreshIfRelevant);
+      socket.off('RegistrationWaitlisted', refreshIfRelevant);
+      socket.disconnect();
+    };
+  }, [refreshRegistrations, selectedEventId]);
 
   useEffect(() => {
     if (!openEventId || !events.some(event => event.id === openEventId)) return;
@@ -574,9 +610,9 @@ export default function Events({ onNavigate, openEventId = '', onEventOpened }: 
   const pastCount = events.filter(e => e.status === 'past').length;
   const selectedEvent = selectedEventId ? events.find(event => event.id === selectedEventId) ?? null : null;
 
-  const handleRegistered = (eventId: string, status: RegistrationStatus) => {
-    setRegistrationsByEvent(prev => ({ ...prev, [eventId]: status }));
-    if (status !== 'CONFIRMED') return;
+  const handleRegistered = (eventId: string, registration: RegistrationRecord) => {
+    setRegistrationsByEvent(prev => ({ ...prev, [eventId]: registration }));
+    if (registration.status !== 'CONFIRMED') return;
     setEvents(prev => prev.map(event => event.id === eventId ? { ...event, registered: Math.min(event.capacity, event.registered + 1) } : event));
   };
 
@@ -595,7 +631,7 @@ export default function Events({ onNavigate, openEventId = '', onEventOpened }: 
     return (
       <EventDetail
         event={selectedEvent}
-        registrationStatus={registrationsByEvent[selectedEvent.id] ?? null}
+        registration={registrationsByEvent[selectedEvent.id] ?? null}
         onBack={() => setSelectedEventId(null)}
         onNavigate={onNavigate}
         onRegistered={handleRegistered}

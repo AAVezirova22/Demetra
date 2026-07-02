@@ -54,6 +54,7 @@ export type RegistrationRecord = {
   status: RegistrationStatus;
   eventId: string;
   userId: string;
+  waitlistPosition: number | null;
   createdAt: string;
   updatedAt: string;
   event?: EventRecord;

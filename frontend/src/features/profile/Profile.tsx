@@ -1,6 +1,15 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { Camera, Globe, MapPin, Save, Trash2, UserRound } from 'lucide-react';
-import { fetchProfile, getStoredAuth, storeAuth, updateProfile, type AuthUser, type UserProfile } from '../../shared/api/api';
+import {
+  fetchProfile,
+  getStoredAuth,
+  listMyRegistrations,
+  storeAuth,
+  updateProfile,
+  type AuthUser,
+  type RegistrationRecord,
+  type UserProfile,
+} from '../../shared/api/api';
 import './Profile.css';
 
 const AVATAR_MAX_DIMENSION = 512;
@@ -100,6 +109,7 @@ async function compressAvatar(file: File) {
 
 export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
   const [profile, setProfile] = useState<UserProfile>(() => fallbackProfile(currentUser));
+  const [registrations, setRegistrations] = useState<RegistrationRecord[]>([]);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [compressingAvatar, setCompressingAvatar] = useState(false);
@@ -120,6 +130,14 @@ export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load profile.');
+      });
+
+    listMyRegistrations(auth.token)
+      .then(({ registrations }) => {
+        if (!cancelled) setRegistrations(registrations.filter(registration => registration.status !== 'CANCELLED'));
+      })
+      .catch(() => {
+        if (!cancelled) setRegistrations([]);
       });
 
     return () => {
@@ -183,6 +201,10 @@ export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
     .slice(0, 2)
     .map(part => part[0]?.toUpperCase())
     .join('') || 'D';
+  const formatEventDate = (value: string | null | undefined) => {
+    if (!value) return 'Date TBA';
+    return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
+  };
 
   return (
     <div className="profile-page page-transition-container">
@@ -292,6 +314,32 @@ export default function Profile({ currentUser, onUserUpdated }: ProfileProps) {
                 <input value={profile.website} onChange={(e) => updateField('website', e.target.value)} placeholder="https://..." />
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="profile-card profile-card--events">
+          <div className="profile-card-heading">
+            <h2>My Events</h2>
+            <p>Your confirmed places and active waitlist entries.</p>
+          </div>
+          <div className="profile-event-list">
+            {registrations.length === 0 && <div className="profile-event-empty">No active event registrations.</div>}
+            {registrations.map((registration) => (
+              <div className="profile-event-row" key={registration.id}>
+                <div>
+                  <div className="profile-event-title">{registration.event?.title ?? 'Event'}</div>
+                  <div className="profile-event-meta">
+                    {formatEventDate(registration.event?.startsAt)}
+                    {registration.event?.location ? ` / ${registration.event.location}` : ''}
+                  </div>
+                </div>
+                <div className={`profile-event-status ${registration.status === 'WAITLISTED' ? 'waitlisted' : ''}`}>
+                  {registration.status === 'WAITLISTED'
+                    ? `Waitlist #${registration.waitlistPosition ?? '-'}`
+                    : 'Confirmed'}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
