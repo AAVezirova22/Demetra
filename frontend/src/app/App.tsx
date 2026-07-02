@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
-import { ArrowRight, Armchair, Bell, CalendarDays, LayoutGrid, Megaphone, Music, ShieldCheck, Ticket, UserPlus, UsersRound } from 'lucide-react';
+import { ArrowRight, UserPlus } from 'lucide-react';
 import { Navbar } from '../widgets/navbar';
 import { Register, Login, JoinInvitation } from '../features/auth'; 
 import { ClickSpark } from '../shared/ui'; 
@@ -20,26 +20,26 @@ const VIEW_KEY = 'demetra.currentView';
 const demetraBackgroundUrl = `${import.meta.env.BASE_URL}demetraBackground2.png`;
 
 const landingFeatures = [
-  { name: 'Events & tickets', detail: 'Browse published events and register in a couple of clicks', tag: 'Students', icon: Ticket },
-  { name: 'Seat selection', detail: 'Pick your exact seat on the venue map, standard or VIP', tag: 'Students', icon: Armchair },
-  { name: 'Stage designer', detail: 'Design venue layouts with rows, seats, and stage shapes', tag: 'Organizers', icon: LayoutGrid },
-  { name: 'Organizations', detail: 'Music schools, choirs, and clubs with member invitations', tag: 'Organizers', icon: UsersRound },
-  { name: 'Announcements', detail: 'Post updates that reach every member of your organization', tag: 'Organizers', icon: Megaphone },
-  { name: 'Practice room', detail: 'Play piano, violin, guitar, flute, and drums in the browser', tag: 'Everyone', icon: Music },
+  { num: '01', name: 'Events & Tickets', detail: 'Browse published events and register in a couple of clicks.', tag: 'Students' },
+  { num: '02', name: 'Live Seat Selection', detail: 'Pick your exact seat on the interactive venue map, standard or VIP.', tag: 'Students' },
+  { num: '03', name: 'Stage Designer', detail: 'Design venue layouts with rows, seats, and stage shapes.', tag: 'Organizers' },
+  { num: '04', name: 'Organizations & Invitations', detail: 'Music schools, choirs, and clubs with member invitations.', tag: 'Organizers' },
+  { num: '05', name: 'Announcements', detail: 'Post updates that reach every member of your organization.', tag: 'Organizers' },
+  { num: '06', name: 'Practice Room', detail: 'Piano, violin, guitar, flute, and drums - playable right in the browser.', tag: 'Everyone' },
 ];
 
 const landingStats = [
-  { value: 'Live', label: 'Seat maps', detail: 'Choose your exact seat on the venue layout, with standard and VIP tiers' },
-  { value: 'Auto', label: 'Waitlists', detail: 'Full events queue registrations, so nobody loses their spot in line' },
-  { value: '2', label: 'Roles', detail: 'Students discover and join events; organizers create and manage them' },
-  { value: '5', label: 'Instruments', detail: 'A built-in practice room with playable piano, violin, guitar, flute, and drums' },
+  { value: 'Live', label: 'Seat maps', detail: 'Choose your exact seat on the venue layout, standard or VIP tier.' },
+  { value: 'Auto', label: 'Waitlists', detail: 'Full events queue registrations automatically - no spot is lost.' },
+  { value: '2', label: 'Roles', detail: 'Students discover events. Organizers create and manage them.' },
+  { value: '5', label: 'Instruments', detail: 'Piano, violin, guitar, flute, and drums - playable in the browser.' },
 ];
 
-const landingCapabilities = [
-  { icon: CalendarDays, title: 'Events and capacity', text: 'Publish events with venue capacity, dates, and pricing. Registration counts stay visible, and full events switch to a waitlist automatically.' },
-  { icon: UsersRound, title: 'People and roles', text: 'Students, teachers, and organization owners each get the right view. Invite members to your music school, choir, or club with a single link.' },
-  { icon: Bell, title: 'Notifications', text: 'Invitations, announcements, and event reminders arrive in the app and are mirrored to your email, so you never miss a rehearsal or concert.' },
-  { icon: ShieldCheck, title: 'Account protection', text: 'Your account is guarded against break-in attempts: repeated wrong passwords trigger a warning and temporarily lock the login.' },
+const landingHiw = [
+  { roman: 'I', title: 'Events and capacity', text: 'Publish events with venue capacity, dates, and pricing. Registration counts stay visible, and full events switch to a waitlist automatically.' },
+  { roman: 'II', title: 'People and roles', text: 'Students, teachers, and organization owners each get the right view. Invite members to your music school, choir, or club with a single link.' },
+  { roman: 'III', title: 'Notifications', text: 'Invitations, announcements, and event reminders arrive in-app and by email, so you never miss a rehearsal or concert.' },
+  { roman: 'IV', title: 'Account protection', text: 'Repeated wrong passwords trigger a warning and temporarily lock the login - no silent compromise.' },
 ];
 
 function getStoredView(): AppView {
@@ -68,8 +68,8 @@ export default function App() {
         scrollTrigger: {
           trigger: '.scrollDist',
           start: 'top top',
-          end: 'bottom bottom',
-          scrub: 1,
+          end: 'bottom top',
+          scrub: 1.7,
         }
       })
       .fromTo('.sky', { y: 0 }, { y: -200 }, 0)
@@ -78,7 +78,9 @@ export default function App() {
       .fromTo('.cloud3', { y: -50 }, { y: -650 }, 0)
       .fromTo('.mountBg', { y: -10 }, { y: -100 }, 0)
       .fromTo('.mountMg', { y: -30 }, { y: -250 }, 0)
-      .fromTo('.mountFg', { y: -50 }, { y: -600 }, 0);
+      .fromTo('.mountFg', { y: -50 }, { y: -600 }, 0)
+      .fromTo('.hero-line-field', { autoAlpha: 0 }, { autoAlpha: 1 }, 0.1)
+      .fromTo('.hero-rise-line', { y: 210, autoAlpha: 0 }, { y: -250, autoAlpha: 1, stagger: 0.018, ease: 'none' }, 0.12);
 
       gsap.utils.toArray<HTMLElement>('.landing-reveal').forEach((section) => {
         gsap.fromTo(section,
@@ -97,6 +99,7 @@ export default function App() {
         );
       });
 
+      const cleanups: Array<() => void> = [];
       const btn = arrowRef.current;
       if (btn) {
         const onMouseEnter = () => {
@@ -106,19 +109,33 @@ export default function App() {
           gsap.to('.arrow', { y: 0, duration: 0.5, ease: 'power3.out', overwrite: 'auto' });
         };
         const onClick = () => {
-          gsap.to(window, { scrollTo: window.innerHeight, duration: 1.5, ease: 'power1.inOut' });
+          const landingTop = document.querySelector('.landing-content')?.getBoundingClientRect().top ?? window.innerHeight;
+          gsap.to(window, { scrollTo: window.scrollY + landingTop, duration: 2.1, ease: 'power1.inOut' });
         };
 
         btn.addEventListener('mouseenter', onMouseEnter);
         btn.addEventListener('mouseleave', onMouseLeave);
         btn.addEventListener('click', onClick);
 
-        return () => {
+        cleanups.push(() => {
           btn.removeEventListener('mouseenter', onMouseEnter);
           btn.removeEventListener('mouseleave', onMouseLeave);
           btn.removeEventListener('click', onClick);
-        };
+        });
       }
+
+      document.querySelectorAll<HTMLElement>('.feature-row').forEach((row) => {
+        const onMouseEnter = () => gsap.to(row, { paddingLeft: 60, duration: 0.35, ease: 'power2.out' });
+        const onMouseLeave = () => gsap.to(row, { paddingLeft: 0, duration: 0.3, ease: 'power2.out' });
+        row.addEventListener('mouseenter', onMouseEnter);
+        row.addEventListener('mouseleave', onMouseLeave);
+        cleanups.push(() => {
+          row.removeEventListener('mouseenter', onMouseEnter);
+          row.removeEventListener('mouseleave', onMouseLeave);
+        });
+      });
+
+      return () => cleanups.forEach((cleanup) => cleanup());
     }, containerRef);
 
     return () => ctx.revert();
@@ -220,6 +237,7 @@ export default function App() {
       <div 
         ref={containerRef} 
         className={`app-container ${currentView === 'home' ? 'app-home' : ''}`} 
+        data-view={currentView}
         style={{
           position: 'relative',
           top: 0,
@@ -285,8 +303,24 @@ export default function App() {
                 />                
                 
                 <g mask="url(#m)">
-                  <rect fill="#fff" width="100%" height="100%" />
-                  <text className="main-title main-title-school" x="50%" y="300" textAnchor="middle" fill="#162a43">School events</text>
+                  <rect className="hero-reveal-bg" width="100%" height="100%" />
+                  <g className="hero-line-field" aria-hidden="true">
+                    {Array.from({ length: 31 }, (_, index) => {
+                      const x = 30 + index * 38;
+                      const height = 210 + (index % 5) * 34;
+                      const y = 520 - height;
+                      return (
+                        <line
+                          key={index}
+                          className="hero-rise-line"
+                          x1={x}
+                          x2={x}
+                          y1={y}
+                          y2={520}
+                        />
+                      );
+                    })}
+                  </g>
                 </g>
                 
                 <rect 
@@ -302,31 +336,28 @@ export default function App() {
               </svg>
             </main>
 
-            <section className="landing-content" aria-label="Demetra system">
-              <div className="landing-band landing-command landing-reveal">
-                <div className="stack-copy">
-                  <span className="landing-kicker">School music events</span>
-                  <h2>Every concert, recital, and rehearsal in one place.</h2>
-                  <p>
-                    Demetra brings music schools, choirs, and student clubs together with the people who attend
-                    their events. Organizers publish concerts and design seating, students pick a seat and
-                    register — and everyone stays in the loop with reminders and announcements.
-                  </p>
-                  <div className="landing-actions">
-                    <button type="button" className="landing-primary" onClick={() => handleNavigate('register')}>
-                      <UserPlus size={17} />
-                      Join us
-                    </button>
-                    <button type="button" className="landing-secondary" onClick={() => handleNavigate('events')}>
-                      See events
-                      <ArrowRight size={17} />
-                    </button>
+            <div className="landing-content">
+              <section className="landing-band manifesto landing-reveal" aria-label="About Demetra">
+                <div className="manifesto-index">
+                  <div className="manifesto-index-num">01 / 04</div>
+                  Platform
+                </div>
+                <div className="manifesto-body">
+                  <h2>
+                    Music deserves better than<br />
+                    <em>spreadsheets and email chains.</em>
+                  </h2>
+                  <div className="manifesto-cols">
+                    <p>Demetra brings music schools, choirs, and student clubs together with the audiences who come to their events. One platform - from the first rehearsal to the final bow.</p>
+                    <p>Organizers publish concerts, design seating, and broadcast announcements. Students browse, register, and choose their seats. Everyone stays in sync.</p>
                   </div>
                 </div>
+              </section>
 
-                <div className="landing-stat-board" aria-label="Platform highlights">
+              <div className="number-strip landing-reveal">
+                <div className="number-strip-inner">
                   {landingStats.map((stat) => (
-                    <div className="landing-stat" key={stat.label}>
+                    <div className="num-cell" key={stat.label}>
                       <b>{stat.value}</b>
                       <span>{stat.label}</span>
                       <p>{stat.detail}</p>
@@ -335,56 +366,79 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="landing-band landing-service-section landing-reveal">
-                <div className="landing-section-head">
-                  <span className="landing-kicker">What you can do</span>
-                  <h2>Built for organizers. Loved by students.</h2>
+              <section className="landing-band features" aria-label="Features">
+                <div className="features-header landing-reveal">
+                  <div>
+                    <div className="section-eyebrow">02 / 04 - What you can do</div>
+                    <h2>Built for organizers.<br />Loved by students.</h2>
+                  </div>
+                  <p className="features-header-right">
+                    Every feature is designed to reduce friction between a music organization and its community - from first invite to last encore.
+                  </p>
                 </div>
-                <div className="stack-service-grid" aria-label="Platform features">
-                  {landingFeatures.map(({ name, detail, tag, icon: Icon }) => (
-                    <div className="stack-service-card" key={name}>
-                      <Icon size={22} />
-                      <div>
-                        <b>{name}</b>
-                        <span>{detail}</span>
+                <div className="feature-list landing-reveal">
+                  {landingFeatures.map((feature) => (
+                    <div className="feature-row" key={feature.num}>
+                      <span className="feat-num">{feature.num}</span>
+                      <div className="feature-row-body">
+                        <div className="feature-row-title">{feature.name}</div>
+                        <div className="feature-row-desc">{feature.detail}</div>
                       </div>
-                      <em>{tag}</em>
+                      <span className="feat-tag">{feature.tag}</span>
                     </div>
                   ))}
                 </div>
+              </section>
+
+              <div className="pull-quote-band landing-reveal" aria-label="Philosophy">
+                <div className="pull-quote-inner">
+                  <div className="pq-bar" aria-hidden="true" />
+                  <blockquote className="pq-text">
+                    "The curtain rises when the last seat is filled.{' '}
+                    <strong>Demetra fills the seats.</strong>"
+                  </blockquote>
+                </div>
               </div>
 
-              <div className="landing-band landing-capabilities landing-reveal">
-                <div className="landing-section-head">
-                  <span className="landing-kicker">How it works</span>
-                  <h2>Thoughtful details, from invitation to encore.</h2>
+              <section className="landing-band hiw" aria-label="How it works">
+                <div className="hiw-header landing-reveal">
+                  <div>
+                    <div className="section-eyebrow">03 / 04 - How it works</div>
+                    <h2>Thoughtful details,<br />from invitation to encore.</h2>
+                  </div>
                 </div>
-                <div className="landing-capability-grid">
-                  {landingCapabilities.map(({ icon: Icon, title, text }) => (
-                    <article className="landing-capability" key={title}>
-                      <Icon size={24} />
-                      <h3>{title}</h3>
-                      <p>{text}</p>
-                    </article>
+                <div className="hiw-grid landing-reveal">
+                  {landingHiw.map((item) => (
+                    <div className="hiw-cell" key={item.roman}>
+                      <div className="hiw-cell-num" aria-hidden="true">{item.roman}</div>
+                      <h3>{item.title}</h3>
+                      <p>{item.text}</p>
+                    </div>
                   ))}
                 </div>
-              </div>
+              </section>
 
-              <div className="landing-band landing-join-panel landing-reveal">
-                <div>
-                  <span className="landing-kicker">Get started</span>
-                  <h2>Your next event starts here.</h2>
-                  <p>Create a free account to browse concerts and recitals — or set up your organization and start hosting.</p>
+              <section className="cta-closer" aria-label="Get started">
+                <div className="cta-closer-bg" aria-hidden="true">DEMETRA</div>
+                <div className="cta-closer-inner landing-reveal">
+                  <span className="cta-kicker">04 / 04 - Get started</span>
+                  <h2>Your next event<br />starts here.</h2>
+                  <p>Create a free account to browse concerts and recitals - or set up your organization and start hosting.</p>
+                  <div className="cta-buttons">
+                    <button type="button" className="cta-main" onClick={() => handleNavigate('register')}>
+                      <UserPlus size={16} />
+                      Join us
+                    </button>
+                    <button type="button" className="cta-ghost" onClick={() => handleNavigate('events')}>
+                      Browse events
+                      <ArrowRight size={16} />
+                    </button>
+                  </div>
                 </div>
-                <button type="button" className="landing-primary landing-join-btn" onClick={() => handleNavigate('register')}>
-                  <UserPlus size={18} />
-                  Join us
-                </button>
-              </div>
-            </section>
+              </section>
+            </div>
           </>
         )}
-
         {currentView === 'register' && (
           <Register 
             onBackToHome={() => setCurrentView('home')} 
@@ -447,3 +501,4 @@ export default function App() {
     </ClickSpark>
   );
 }
+

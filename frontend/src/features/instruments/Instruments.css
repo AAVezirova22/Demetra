@@ -2531,3 +2531,94 @@
     height: min(58vh, 280px) !important;
   }
 }
+
+/* Final scroll guards.
+   Desktop keeps the instruments workspace inside one viewport; only the player
+   and notes panels scroll internally. Smaller screens keep normal page flow. */
+@media (min-width: 1101px) {
+  .app-container:has(.instruments-page) {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .instruments-page {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .ins-content {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box;
+  }
+
+  .ins-hero {
+    flex: 0 0 auto !important;
+    padding: 88px 0 18px !important;
+  }
+
+  .ins-gold-rule,
+  .ins-picker-bar {
+    flex: 0 0 auto !important;
+  }
+
+  .ins-picker-bar {
+    margin-bottom: 16px !important;
+  }
+
+  .ins-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding-bottom: 22px !important;
+    align-items: stretch !important;
+  }
+
+  .ins-player-col,
+  .ins-notes-col {
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .ins-player-col {
+    padding-right: 6px;
+  }
+
+  .ins-notes-card {
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .ins-notes-card .notes-panel {
+    min-height: 0 !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .app-container:has(.instruments-page),
+  .instruments-page {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+  }
+
+  .ins-content {
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .ins-body,
+  .ins-player-col,
+  .ins-notes-col {
+    overflow: visible !important;
+  }
+}
