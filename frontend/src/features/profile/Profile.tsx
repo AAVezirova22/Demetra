@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
-import { Camera, Globe, MapPin, Save, Trash2, UserRound } from 'lucide-react';
+import { CalendarDays, Camera, ChevronLeft, ChevronRight, Download, Globe, MapPin, Save, Trash2, UserRound } from 'lucide-react';
 import {
   fetchProfile,
   getStoredAuth,
@@ -15,6 +15,7 @@ import './Profile.css';
 const AVATAR_MAX_DIMENSION = 512;
 const AVATAR_TARGET_BYTES = 350 * 1024;
 const AVATAR_MAX_DATA_URL_LENGTH = 900_000;
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 interface ProfileProps {
   currentUser: AuthUser;
@@ -108,9 +109,35 @@ async function compressAvatar(file: File) {
   throw new Error('That image is too large to use as a profile picture.');
 }
 
+function localDateKey(value: string | Date) {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function toCalendarDate(value: Date) {
+  return value.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+function escapeCalendarText(value: string | null | undefined) {
+  return (value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\n/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+}
+
 export default function Profile({ currentUser, onUserUpdated, onOpenEvent }: ProfileProps) {
   const [profile, setProfile] = useState<UserProfile>(() => fallbackProfile(currentUser));
   const [registrations, setRegistrations] = useState<RegistrationRecord[]>([]);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => localDateKey(new Date()));
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [compressingAvatar, setCompressingAvatar] = useState(false);
@@ -206,6 +233,71 @@ export default function Profile({ currentUser, onUserUpdated, onOpenEvent }: Pro
     if (!value) return 'Date TBA';
     return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
   };
+  const formatEventTime = (value: string | null | undefined) => {
+    if (!value) return 'Time TBA';
+    return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+  };
+  const calendarRegistrations = registrations.filter(registration => registration.event?.startsAt);
+  const eventsByDate = calendarRegistrations.reduce((map, registration) => {
+    const key = localDateKey(registration.event?.startsAt ?? '');
+    if (!key) return map;
+    const items = map.get(key) ?? [];
+    items.push(registration);
+    map.set(key, items);
+    return map;
+  }, new Map<string, RegistrationRecord[]>());
+  const monthYearLabel = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(calendarMonth);
+  const firstMonthDay = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+  const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+  const calendarCells = [
+    ...Array.from({ length: firstMonthDay.getDay() }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), index + 1)),
+  ];
+  const todayKey = localDateKey(new Date());
+  const selectedDayEvents = selectedCalendarDate ? eventsByDate.get(selectedCalendarDate) ?? [] : [];
+  const moveCalendarMonth = (offset: number) => {
+    setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
+  };
+  const exportRegisteredEvents = () => {
+    if (calendarRegistrations.length === 0) return;
+
+    const timestamp = toCalendarDate(new Date());
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Demetra//Registered Events//EN',
+      'CALSCALE:GREGORIAN',
+    ];
+
+    calendarRegistrations.forEach((registration) => {
+      const startsAt = registration.event?.startsAt;
+      if (!startsAt) return;
+      const start = new Date(startsAt);
+      if (Number.isNaN(start.getTime())) return;
+      const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:${registration.id}@demetra-events`,
+        `DTSTAMP:${timestamp}`,
+        `DTSTART:${toCalendarDate(start)}`,
+        `DTEND:${toCalendarDate(end)}`,
+        `SUMMARY:${escapeCalendarText(registration.event?.title ?? 'Demetra event')}`,
+        `LOCATION:${escapeCalendarText(registration.event?.location ?? '')}`,
+        `DESCRIPTION:${escapeCalendarText(registration.event?.description ?? '')}`,
+        'END:VEVENT',
+      );
+    });
+
+    lines.push('END:VCALENDAR');
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'demetra-registered-events.ics';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="profile-page page-transition-container">
@@ -253,6 +345,70 @@ export default function Profile({ currentUser, onUserUpdated, onOpenEvent }: Pro
                   Remove
                 </button>
               )}
+            </div>
+          </div>
+
+          <div className="profile-calendar">
+            <div className="profile-calendar-header">
+              <div className="profile-calendar-title">
+                <CalendarDays size={17} />
+                <span>{monthYearLabel}</span>
+              </div>
+              <div className="profile-calendar-actions">
+                <button type="button" className="profile-icon-btn" onClick={() => moveCalendarMonth(-1)} aria-label="Previous month">
+                  <ChevronLeft size={16} />
+                </button>
+                <button type="button" className="profile-icon-btn" onClick={() => moveCalendarMonth(1)} aria-label="Next month">
+                  <ChevronRight size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="profile-icon-btn"
+                  onClick={exportRegisteredEvents}
+                  disabled={calendarRegistrations.length === 0}
+                  aria-label="Export calendar"
+                  title="Export calendar"
+                >
+                  <Download size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="profile-calendar-grid">
+              {WEEKDAYS.map(day => (
+                <div className="profile-calendar-weekday" key={day}>{day}</div>
+              ))}
+              {calendarCells.map((day, index) => {
+                if (!day) return <div className="profile-calendar-empty" key={`empty-${index}`} />;
+                const key = localDateKey(day);
+                const hasEvents = eventsByDate.has(key);
+                const isSelected = selectedCalendarDate === key;
+                return (
+                  <button
+                    type="button"
+                    className={`profile-calendar-day ${hasEvents ? 'has-events' : ''} ${isSelected ? 'selected' : ''} ${todayKey === key ? 'today' : ''}`}
+                    key={key}
+                    onClick={() => setSelectedCalendarDate(key)}
+                  >
+                    <span>{day.getDate()}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="profile-calendar-events">
+              {selectedDayEvents.length === 0 && <div className="profile-calendar-empty-state">No events on selected date.</div>}
+              {selectedDayEvents.map(registration => (
+                <button
+                  type="button"
+                  className="profile-calendar-event"
+                  key={registration.id}
+                  onClick={() => onOpenEvent(registration.eventId)}
+                >
+                  <span>{formatEventTime(registration.event?.startsAt)}</span>
+                  <strong>{registration.event?.title ?? 'Event'}</strong>
+                </button>
+              ))}
             </div>
           </div>
         </section>
