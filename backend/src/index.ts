@@ -1459,6 +1459,7 @@ app.get('/api/events/my', requireAuth, requireRole(Role.ORGANIZER), async (req, 
   const events = await prisma.event.findMany({
     where: { organizerId: req.user!.sub },
     include: {
+      organizer: { select: { id: true, name: true } },
       organization: { select: { id: true, name: true, kind: true } },
       _count: { select: { registrations: { where: { status: 'CONFIRMED' } } } },
     },
@@ -1541,6 +1542,10 @@ app.post('/api/events', requireAuth, requireRole(Role.ORGANIZER), async (req, re
           organizerId: req.user!.sub,
           organizationId: access.organization.id,
         },
+        include: {
+          organizer: { select: { id: true, name: true } },
+          organization: { select: { id: true, name: true, kind: true } },
+        },
       });
 
       await tx.outboxEvent.create({
@@ -1600,6 +1605,10 @@ app.patch('/api/events/:id', requireAuth, requireRole(Role.ORGANIZER), async (re
           location: input.location,
           capacity: input.capacity,
           reminderSentAt: existing.startsAt?.getTime() === input.startsAt?.getTime() ? existing.reminderSentAt : null,
+        },
+        include: {
+          organizer: { select: { id: true, name: true } },
+          organization: { select: { id: true, name: true, kind: true } },
         },
       });
 
@@ -1662,6 +1671,10 @@ app.patch('/api/events/:id/cancel', requireAuth, requireRole(Role.ORGANIZER), as
       const updated = await tx.event.update({
         where: { id: eventId },
         data: { status: EventStatus.CANCELLED },
+        include: {
+          organizer: { select: { id: true, name: true } },
+          organization: { select: { id: true, name: true, kind: true } },
+        },
       });
 
       await tx.registration.updateMany({

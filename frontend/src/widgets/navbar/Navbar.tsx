@@ -19,6 +19,7 @@ interface NavbarProps {
   onLogout: () => void;
   onOpenInvitation: (token: string) => void;
   onOpenPost: (postId: string) => void;
+  onOpenEvent: (eventId: string) => void;
 }
 
 function getInviteToken(notification: NotificationRecord) {
@@ -33,7 +34,13 @@ function getPostId(notification: NotificationRecord) {
   return typeof postId === 'string' ? postId : '';
 }
 
-export default function Navbar({ onNavigate, currentView, currentUser, onLogout, onOpenInvitation, onOpenPost }: NavbarProps) {
+function getEventId(notification: NotificationRecord) {
+  if (!notification.metadata || typeof notification.metadata !== 'object') return '';
+  const eventId = (notification.metadata as { eventId?: unknown }).eventId;
+  return typeof eventId === 'string' ? eventId : '';
+}
+
+export default function Navbar({ onNavigate, currentView, currentUser, onLogout, onOpenInvitation, onOpenPost, onOpenEvent }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -119,6 +126,13 @@ export default function Navbar({ onNavigate, currentView, currentUser, onLogout,
       setNotificationsOpen(false);
       setMenuOpen(false);
       onOpenPost(postId);
+      return;
+    }
+    const eventId = getEventId(notification);
+    if (eventId) {
+      setNotificationsOpen(false);
+      setMenuOpen(false);
+      onOpenEvent(eventId);
     }
   };
 

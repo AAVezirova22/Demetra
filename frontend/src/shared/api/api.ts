@@ -33,6 +33,7 @@ export type EventRecord = {
   capacity: number;
   status: 'DRAFT' | 'PUBLISHED' | 'CANCELLED' | 'CLOSED';
   registered: number;
+  organizerId?: string;
   organizer?: {
     id: string;
     name: string;

@@ -12,6 +12,8 @@ import './Events.css';
 
 interface EventsProps {
   onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard') => void;
+  openEventId?: string;
+  onEventOpened?: () => void;
 }
 
 interface Event {
@@ -484,7 +486,7 @@ function EventDetail({ event, registrationStatus, onBack, onNavigate, onRegister
 
 // Events List Page
 
-export default function Events({ onNavigate }: EventsProps) {
+export default function Events({ onNavigate, openEventId = '', onEventOpened }: EventsProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'past'>('all');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -550,6 +552,12 @@ export default function Events({ onNavigate }: EventsProps) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!openEventId || !events.some(event => event.id === openEventId)) return;
+    setSelectedEventId(openEventId);
+    onEventOpened?.();
+  }, [openEventId, events, onEventOpened]);
 
   const categories = ['All', ...Array.from(new Set(events.map(event => event.category))).sort()];
 

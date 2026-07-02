@@ -43,6 +43,7 @@ interface DashboardProps {
   onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments' | 'join') => void;
   currentUser: AuthUser | null;
   onOpenInvitation: (token: string) => void;
+  onOpenEvent: (eventId: string) => void;
   onUserUpdated: (user: AuthUser) => void;
   openPostId?: string;
   onPostOpened?: () => void;
@@ -124,7 +125,7 @@ function mapDashboardEvent(event: EventRecord, index: number) {
     apiStatus: event.status,
     category: event.category ?? 'Event',
     color: EVENT_COLORS[index % EVENT_COLORS.length]!,
-    organizerId: event.organizer?.id,
+    organizerId: event.organizer?.id ?? event.organizerId,
   };
 }
 
@@ -740,6 +741,7 @@ function NotificationPane({
   onMarkRead,
   onMarkAllRead,
   onOpenInvitation,
+  onOpenEvent,
   onOpenPost,
 }: {
   notifications: NotificationRecord[];
@@ -747,6 +749,7 @@ function NotificationPane({
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
   onOpenInvitation: (token: string) => void;
+  onOpenEvent: (eventId: string) => void;
   onOpenPost: (postId: string) => void;
 }) {
   const openNotification = (notification: NotificationRecord) => {
@@ -760,6 +763,8 @@ function NotificationPane({
       const postId = (notification.metadata as { postId?: unknown }).postId;
       if (typeof postId === 'string') onOpenPost(postId);
     }
+    const eventId = (notification.metadata as { eventId?: unknown }).eventId;
+    if (typeof eventId === 'string') onOpenEvent(eventId);
   };
 
   return (
@@ -1011,7 +1016,7 @@ function EmptyOrganizationDashboard({
 }
 
 // Dashboard
-export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpenInvitation, onUserUpdated, openPostId = '', onPostOpened }: DashboardProps) {
+export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpenInvitation, onOpenEvent, onUserUpdated, openPostId = '', onPostOpened }: DashboardProps) {
   const [section, setSection] = useState<'overview' | 'events' | 'news' | 'students' | 'stages' | 'settings'>('overview');
   const [showInvite, setShowInvite] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -1256,7 +1261,8 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
 
   const isEventEditable = (event: EventRecord) => {
     const startsAt = event.startsAt ? new Date(event.startsAt) : null;
-    return event.status === 'PUBLISHED' && (!startsAt || startsAt.getTime() > openEventCutoff) && event.organizer?.id === currentUser?.id;
+    const organizerId = event.organizer?.id ?? event.organizerId;
+    return event.status === 'PUBLISHED' && (!startsAt || startsAt.getTime() > openEventCutoff) && organizerId === currentUser?.id;
   };
 
   const openEditEvent = (eventId: string) => {
@@ -1580,6 +1586,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                     onMarkRead={markRead}
                     onMarkAllRead={markAllRead}
                     onOpenInvitation={onOpenInvitation}
+                    onOpenEvent={onOpenEvent}
                     onOpenPost={openPost}
                   />
                 )}
@@ -1867,6 +1874,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                   onMarkRead={markRead}
                   onMarkAllRead={markAllRead}
                   onOpenInvitation={onOpenInvitation}
+                  onOpenEvent={onOpenEvent}
                   onOpenPost={openPost}
                 />
               </div>
