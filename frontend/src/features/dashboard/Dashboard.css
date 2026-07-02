@@ -1353,6 +1353,247 @@
 .seatmap-tool-dot { width: 12px; height: 10px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
 .seatmap-toolbar-hint { margin-left: auto; font-family: 'Inter', sans-serif; font-size: 11px; color: #a0aec0; font-style: italic; }
 .seatmap-scroll { overflow-x: auto; overflow-y: hidden; scrollbar-gutter: stable; }
+
+/* Editorial landing-page skin */
+.dash-page {
+  background: #ffffff !important;
+  color: #0a0a08;
+}
+
+.app-container:has(.dash-page) .nav-container {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-bottom: 1px solid rgba(10, 10, 8, 0.1) !important;
+}
+
+.dash-sidebar {
+  background: #ffffff !important;
+  border-right: 1px solid rgba(10, 10, 8, 0.12) !important;
+  box-shadow: none !important;
+}
+
+.dash-org-card {
+  border-bottom-color: rgba(10, 10, 8, 0.12) !important;
+}
+
+.dash-org-avatar {
+  border-radius: 2px !important;
+  background: #0a0a08 !important;
+  box-shadow: none !important;
+  color: #f5f2eb !important;
+}
+
+.dash-org-name,
+.dash-page-title,
+.dash-section-title,
+.dash-stat-value,
+.dash-event-row-title,
+.dash-event-card-full-title,
+.empty-org-panel h2 {
+  font-family: 'Cinzel', serif !important;
+  color: #0a0a08 !important;
+  letter-spacing: 0 !important;
+}
+
+.dash-page-title {
+  font-size: clamp(2.1rem, 4.5vw, 4.8rem) !important;
+  font-weight: 400 !important;
+  line-height: 0.98 !important;
+}
+
+.dash-breadcrumb,
+.empty-org-panel-kicker,
+.dash-event-card-full-category {
+  color: #8f8110 !important;
+  font-size: 0.68rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+}
+
+.dash-main {
+  max-width: 1280px !important;
+  padding: 56px 48px 80px !important;
+}
+
+.dash-page-header {
+  margin-bottom: 34px !important;
+  padding-bottom: 30px;
+  border-bottom: 1px solid rgba(10, 10, 8, 0.12);
+}
+
+.dash-nav-item {
+  border-radius: 0 !important;
+  border-left: 2px solid transparent;
+  color: #6b6860 !important;
+}
+
+.dash-nav-item:hover {
+  background: #f5f2eb !important;
+  color: #0a0a08 !important;
+}
+
+.dash-nav-item.active {
+  background: transparent !important;
+  border-left-color: #8f8110;
+  color: #0a0a08 !important;
+}
+
+.dash-invite-btn,
+.dash-create-btn,
+.modal-btn-primary,
+.invite-send-btn {
+  border-radius: 2px !important;
+  background: #0a0a08 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.dash-invite-btn {
+  border: 1px solid rgba(10, 10, 8, 0.18) !important;
+  background: transparent !important;
+  color: #0a0a08 !important;
+}
+
+.dash-stats-grid {
+  gap: 0 !important;
+  border-top: 1px solid rgba(10, 10, 8, 0.12);
+  border-left: 1px solid rgba(10, 10, 8, 0.12);
+}
+
+.dash-stat-card {
+  border-radius: 0 !important;
+  border: none !important;
+  border-right: 1px solid rgba(10, 10, 8, 0.12) !important;
+  border-bottom: 1px solid rgba(10, 10, 8, 0.12) !important;
+  box-shadow: none !important;
+  background: #ffffff !important;
+}
+
+.dash-stat-icon {
+  opacity: 0.72;
+  filter: grayscale(1);
+}
+
+.dash-stat-label,
+.dash-stat-sub,
+.dash-event-row-meta,
+.dash-event-row-cap,
+.dash-org-type,
+.empty-org-panel p,
+.dash-student-chip-inst {
+  color: #6b6860 !important;
+}
+
+.dash-content-card,
+.dash-event-card-full,
+.empty-org-panel,
+.layout-card,
+.modal-panel,
+.seatmap-wrapper,
+.member-row,
+.dash-student-chip {
+  border-radius: 0 !important;
+  border: 1px solid rgba(10, 10, 8, 0.12) !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.dash-content-card {
+  padding: 28px !important;
+}
+
+.dash-event-row {
+  border-bottom-color: rgba(10, 10, 8, 0.1) !important;
+}
+
+.dash-event-row-dot,
+.dash-event-card-accent {
+  background: #8f8110 !important;
+}
+
+.dash-event-card-full {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.dash-event-card-accent {
+  width: 3px !important;
+}
+
+.dash-event-card-full-body {
+  padding: 24px !important;
+}
+
+.dash-event-card-full-actions button,
+.dash-section-action,
+.note-action-btn {
+  color: #8f8110 !important;
+}
+
+.dash-mini-bar,
+.capacity-bar-track {
+  background: rgba(10, 10, 8, 0.08) !important;
+}
+
+.dash-mini-bar-fill,
+.capacity-bar-fill {
+  background: #8f8110 !important;
+}
+
+.modal-backdrop {
+  background: rgba(10, 10, 8, 0.48) !important;
+}
+
+.modal-title {
+  font-family: 'Cinzel', serif !important;
+  color: #0a0a08 !important;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea,
+.invite-email-input {
+  border-radius: 2px !important;
+  border-color: rgba(10, 10, 8, 0.16) !important;
+  background: #ffffff !important;
+  color: #0a0a08 !important;
+}
+
+@media (max-width: 900px) {
+  .dash-page {
+    flex-direction: column;
+  }
+
+  .dash-main {
+    padding: 34px 18px 64px !important;
+  }
+
+  .dash-sidebar {
+    position: static !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(10, 10, 8, 0.12) !important;
+  }
+
+  .dash-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .dash-page-header {
+    align-items: stretch !important;
+    gap: 18px;
+  }
+}
+
+@media (max-width: 560px) {
+  .dash-stats-grid,
+  .empty-org-grid,
+  .dash-students-preview {
+    grid-template-columns: 1fr !important;
+  }
+}
 .seatmap-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(22,42,67,0.06); }
 .seatmap-legend-item { display: flex; align-items: center; gap: 5px; font-family: 'Inter', sans-serif; font-size: 11px; color: #5c6e85; }
 .legend-count { font-weight: 700; color: #162a43; }
