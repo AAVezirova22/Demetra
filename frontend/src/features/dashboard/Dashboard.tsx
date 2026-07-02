@@ -107,6 +107,14 @@ function formatEventDate(value: string | null) {
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
 }
 
+function getGoogleMapsSearchUrl(location: string) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.trim())}`;
+}
+
+function getGoogleMapsEmbedUrl(location: string) {
+  return `https://www.google.com/maps?q=${encodeURIComponent(location.trim())}&output=embed`;
+}
+
 function mapDashboardEvent(event: EventRecord, index: number) {
   const registered = event.registered ?? 0;
   const capacity = Math.max(event.capacity, 1);
@@ -420,6 +428,7 @@ function CreateEventModal({ layouts, initialLayout, existingEvent, onClose, onSa
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const isEditing = Boolean(existingEvent);
+  const trimmedLocation = location.trim();
 
   const submit = async () => {
     const auth = getStoredAuth();
@@ -500,7 +509,31 @@ function CreateEventModal({ layouts, initialLayout, existingEvent, onClose, onSa
 
         {step === 2 && (
           <div className="create-venue-step">
-            <div className="form-group"><label>Location</label><input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Main Concert Hall" /></div>
+            <div className="form-group location-map-field">
+              <label>Location</label>
+              <div className="location-input-row">
+                <input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="Search or paste a Google Maps location" />
+                <a
+                  className={`maps-action-btn ${trimmedLocation ? '' : 'disabled'}`}
+                  href={trimmedLocation ? getGoogleMapsSearchUrl(trimmedLocation) : undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-disabled={!trimmedLocation}
+                >
+                  Google Maps
+                </a>
+              </div>
+              {trimmedLocation && (
+                <div className="location-map-preview">
+                  <iframe
+                    title="Google Maps location preview"
+                    src={getGoogleMapsEmbedUrl(trimmedLocation)}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+              )}
+            </div>
             <div className="form-group"><label>Capacity</label><input type="number" min={1} max={100000} value={capacity} onChange={e => setCapacity(Math.max(1, Number(e.target.value) || 1))} /></div>
             <div className="create-form-row">
               <div className="form-group"><label>Standard price</label><input type="number" min={0} step="0.01" value={price} onChange={e => setPrice(Math.max(0, Number(e.target.value) || 0))} /></div>

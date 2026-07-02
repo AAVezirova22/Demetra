@@ -83,6 +83,14 @@ function formatMoney(value: number) {
   return value > 0 ? `$${value.toFixed(2)}` : 'Free';
 }
 
+function getGoogleMapsSearchUrl(location: string) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.trim())}`;
+}
+
+function getGoogleMapsEmbedUrl(location: string) {
+  return `https://www.google.com/maps?q=${encodeURIComponent(location.trim())}&output=embed`;
+}
+
 function mapApiEvent(event: EventRecord, index: number): Event {
   const visual = EVENT_VISUALS[index % EVENT_VISUALS.length]!;
   const registered = event.registered ?? 0;
@@ -286,9 +294,11 @@ function EventDetail({ event, registration, onBack, onNavigate, onRegistered, on
   const [joinError, setJoinError] = useState('');
   const [selectedSeat, setSelectedSeat] = useState('');
   const [seatModalOpen, setSeatModalOpen] = useState(false);
+  const [locationPopupOpen, setLocationPopupOpen] = useState(false);
   const isFull = event.registered >= event.capacity;
   const isPast = event.status === 'past';
   const pct = Math.round((event.registered / event.capacity) * 100);
+  const hasMappedLocation = event.location && event.location !== 'Location TBA';
   const takenSeats = new Set(event.activeSeats.map(seat => seat.seatLabel).filter(Boolean) as string[]);
   const selectableSeats: SelectableSeat[] = event.seatingMap
     ? event.seatingMap.seats
@@ -389,7 +399,29 @@ function EventDetail({ event, registration, onBack, onNavigate, onRegistered, on
           <h1 className="event-detail-title">{event.title}</h1>
           <div className="event-detail-meta-row">
             <span>Date: {event.date} / {event.time}</span>
-            <span>Location: {event.location}</span>
+            <span className="event-location-popover-wrap">
+              <button
+                type="button"
+                className="event-location-popover-trigger"
+                onClick={() => hasMappedLocation && setLocationPopupOpen(open => !open)}
+                disabled={!hasMappedLocation}
+              >
+                Location: {event.location}
+              </button>
+              {hasMappedLocation && locationPopupOpen && (
+                <span className="event-location-popover">
+                  <iframe
+                    title={`${event.location} on Google Maps`}
+                    src={getGoogleMapsEmbedUrl(event.location)}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                  <a href={getGoogleMapsSearchUrl(event.location)} target="_blank" rel="noreferrer">
+                    Open in Google Maps
+                  </a>
+                </span>
+              )}
+            </span>
             <span>Venue: {event.venue}</span>
           </div>
         </div>
