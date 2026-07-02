@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
-import { ArrowRight, Bell, Boxes, CalendarDays, Database, Network, Server, ShieldCheck, UserPlus, UsersRound } from 'lucide-react';
+import { ArrowRight, Armchair, Bell, CalendarDays, LayoutGrid, Megaphone, Music, ShieldCheck, Ticket, UserPlus, UsersRound } from 'lucide-react';
 import { Navbar } from '../widgets/navbar';
 import { Register, Login, JoinInvitation } from '../features/auth'; 
 import { ClickSpark } from '../shared/ui'; 
@@ -19,27 +19,27 @@ export type AppView = 'home' | 'register' | 'login' | 'events' | 'dashboard' | '
 const VIEW_KEY = 'demetra.currentView';
 const demetraBackgroundUrl = `${import.meta.env.BASE_URL}demetraBackground2.png`;
 
-const dockerStack = [
-  { name: 'frontend', detail: 'Vite app', port: '5173', icon: Boxes },
-  { name: 'api', detail: 'Node backend', port: '3000', icon: Server },
-  { name: 'nginx', detail: 'Gateway', port: '8080', icon: Network },
-  { name: 'db', detail: 'MySQL 8.4', port: 'internal', icon: Database },
-  { name: 'redis', detail: 'Redis 7', port: 'internal', icon: Server },
-  { name: 'adminer', detail: 'Database UI', port: '8081', icon: Database },
+const landingFeatures = [
+  { name: 'Events & tickets', detail: 'Browse published events and register in a couple of clicks', tag: 'Students', icon: Ticket },
+  { name: 'Seat selection', detail: 'Pick your exact seat on the venue map, standard or VIP', tag: 'Students', icon: Armchair },
+  { name: 'Stage designer', detail: 'Design venue layouts with rows, seats, and stage shapes', tag: 'Organizers', icon: LayoutGrid },
+  { name: 'Organizations', detail: 'Music schools, choirs, and clubs with member invitations', tag: 'Organizers', icon: UsersRound },
+  { name: 'Announcements', detail: 'Post updates that reach every member of your organization', tag: 'Organizers', icon: Megaphone },
+  { name: 'Practice room', detail: 'Play piano, violin, guitar, flute, and drums in the browser', tag: 'Everyone', icon: Music },
 ];
 
 const landingStats = [
-  { value: '7', label: 'Compose services', detail: 'Frontend, API, worker, gateway, database, Redis, Adminer' },
-  { value: '4', label: 'Public entry points', detail: '5173 app, 3000 API, 8080 gateway, 8081 Adminer' },
-  { value: '2', label: 'Data systems', detail: 'MySQL for records and Redis for worker broadcasts' },
-  { value: '5s', label: 'DB health interval', detail: 'MySQL readiness check before dependent services start' },
+  { value: 'Live', label: 'Seat maps', detail: 'Choose your exact seat on the venue layout, with standard and VIP tiers' },
+  { value: 'Auto', label: 'Waitlists', detail: 'Full events queue registrations, so nobody loses their spot in line' },
+  { value: '2', label: 'Roles', detail: 'Students discover and join events; organizers create and manage them' },
+  { value: '5', label: 'Instruments', detail: 'A built-in practice room with playable piano, violin, guitar, flute, and drums' },
 ];
 
 const landingCapabilities = [
-  { icon: CalendarDays, title: 'Events and capacity', text: 'Publish open events, set venue capacity, update still-open events, and keep registration counts visible.' },
-  { icon: UsersRound, title: 'People and roles', text: 'Students, teachers, organization owners, and invited members each get the right dashboard access.' },
-  { icon: Bell, title: 'Notifications', text: 'In-app notifications are mirrored through email when SMTP is configured for the backend worker.' },
-  { icon: ShieldCheck, title: 'Login protection', text: 'Repeated wrong passwords warn after the third attempt and lock login after the fifth attempt.' },
+  { icon: CalendarDays, title: 'Events and capacity', text: 'Publish events with venue capacity, dates, and pricing. Registration counts stay visible, and full events switch to a waitlist automatically.' },
+  { icon: UsersRound, title: 'People and roles', text: 'Students, teachers, and organization owners each get the right view. Invite members to your music school, choir, or club with a single link.' },
+  { icon: Bell, title: 'Notifications', text: 'Invitations, announcements, and event reminders arrive in the app and are mirrored to your email, so you never miss a rehearsal or concert.' },
+  { icon: ShieldCheck, title: 'Account protection', text: 'Your account is guarded against break-in attempts: repeated wrong passwords trigger a warning and temporarily lock the login.' },
 ];
 
 function getStoredView(): AppView {
@@ -216,7 +216,7 @@ export default function App() {
   };
 
   return (
-    <ClickSpark sparkColor={currentView === 'home' ? "#ffffff" : "#e3cc9a"} sparkCount={10} sparkRadius={25} duration={500}>
+    <ClickSpark sparkColor="#ffffff" sparkCount={7} sparkRadius={18} duration={380} enabled={currentView === 'home'}>
       <div 
         ref={containerRef} 
         className={`app-container ${currentView === 'home' ? 'app-home' : ''}`} 
@@ -226,8 +226,8 @@ export default function App() {
           left: 0,
           width: '100vw',
           minHeight: '100vh',
-          height: currentView === 'home' ? '520vh' : 'auto',
-          overflow: currentView === 'home' ? undefined : 'visible',
+          height: 'auto',
+          overflow: 'visible',
         }}
       >
         <Navbar
@@ -268,6 +268,7 @@ export default function App() {
                 <image className="cloud31" href="https://assets.codepen.io/721952/cloud3.png" width="1200" height="800"/>
                 
                 <text className="main-title" fill="#fff" x="50%" y="280" textAnchor="middle">DEMETRA</text>
+                <text className="hero-subtitle" fill="#fff" x="50%" y="322" textAnchor="middle">School concerts, recitals, and rehearsals in one place</text>
                 
                 <path 
                   className="arrow" 
@@ -276,12 +277,12 @@ export default function App() {
                   strokeWidth="2.5" 
                   strokeLinecap="round" 
                   strokeLinejoin="round" 
-                  d="M600,320 L600,360 M592,352 L600,360 L608,352" 
+                  d="M600,356 L600,396 M592,388 L600,396 L608,388" 
                 />                
                 
                 <g mask="url(#m)">
                   <rect fill="#fff" width="100%" height="100%" />
-                  <text className="main-title" x="50%" y="220" textAnchor="middle" fill="#162a43">School events</text>
+                  <text className="main-title" x="50%" y="300" textAnchor="middle" fill="#162a43">School events</text>
                 </g>
                 
                 <rect 
@@ -291,7 +292,7 @@ export default function App() {
                   height="60" 
                   opacity="0" 
                   x="575" 
-                  y="310" 
+                  y="346" 
                   style={{ cursor: 'pointer' }} 
                 />
               </svg>
@@ -300,11 +301,12 @@ export default function App() {
             <section className="landing-content" aria-label="Demetra system">
               <div className="landing-band landing-command landing-reveal">
                 <div className="stack-copy">
-                  <span className="landing-kicker">Operational view</span>
-                  <h2>One school events system, running as a real service stack.</h2>
+                  <span className="landing-kicker">School music events</span>
+                  <h2>Every concert, recital, and rehearsal in one place.</h2>
                   <p>
-                    Demetra is more than a landing page: the local setup defines the app shell, API, database,
-                    queue worker, gateway, and admin tools needed to run the school event workflow.
+                    Demetra brings music schools, choirs, and student clubs together with the people who attend
+                    their events. Organizers publish concerts and design seating, students pick a seat and
+                    register — and everyone stays in the loop with reminders and announcements.
                   </p>
                   <div className="landing-actions">
                     <button type="button" className="landing-primary" onClick={() => handleNavigate('register')}>
@@ -318,7 +320,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="landing-stat-board" aria-label="Docker Compose stats">
+                <div className="landing-stat-board" aria-label="Platform highlights">
                   {landingStats.map((stat) => (
                     <div className="landing-stat" key={stat.label}>
                       <b>{stat.value}</b>
@@ -331,18 +333,18 @@ export default function App() {
 
               <div className="landing-band landing-service-section landing-reveal">
                 <div className="landing-section-head">
-                  <span className="landing-kicker">From docker-compose.yml</span>
-                  <h2>Services, ports, and responsibilities.</h2>
+                  <span className="landing-kicker">What you can do</span>
+                  <h2>Built for organizers. Loved by students.</h2>
                 </div>
-                <div className="stack-service-grid" aria-label="Docker Compose services">
-                  {dockerStack.map(({ name, detail, port, icon: Icon }) => (
+                <div className="stack-service-grid" aria-label="Platform features">
+                  {landingFeatures.map(({ name, detail, tag, icon: Icon }) => (
                     <div className="stack-service-card" key={name}>
                       <Icon size={22} />
                       <div>
                         <b>{name}</b>
                         <span>{detail}</span>
                       </div>
-                      <em>{port}</em>
+                      <em>{tag}</em>
                     </div>
                   ))}
                 </div>
@@ -350,8 +352,8 @@ export default function App() {
 
               <div className="landing-band landing-capabilities landing-reveal">
                 <div className="landing-section-head">
-                  <span className="landing-kicker">What the system handles</span>
-                  <h2>Useful details for organizers and students.</h2>
+                  <span className="landing-kicker">How it works</span>
+                  <h2>Thoughtful details, from invitation to encore.</h2>
                 </div>
                 <div className="landing-capability-grid">
                   {landingCapabilities.map(({ icon: Icon, title, text }) => (
@@ -366,9 +368,9 @@ export default function App() {
 
               <div className="landing-band landing-join-panel landing-reveal">
                 <div>
-                  <span className="landing-kicker">Start using it</span>
-                  <h2>Join the school event workspace.</h2>
-                  <p>Create an account, browse published events, or start organizing if you are a teacher.</p>
+                  <span className="landing-kicker">Get started</span>
+                  <h2>Your next event starts here.</h2>
+                  <p>Create a free account to browse concerts and recitals — or set up your organization and start hosting.</p>
                 </div>
                 <button type="button" className="landing-primary landing-join-btn" onClick={() => handleNavigate('register')}>
                   <UserPlus size={18} />

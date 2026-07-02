@@ -1,8 +1,9 @@
 /* Base Page Split Container */
 .register-container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
+  overflow: hidden;
 }
 
 /* Left Form Layout */
@@ -14,6 +15,7 @@
   max-width: 600px;
   justify-content: center;
   position: relative;
+  overflow-y: auto;
 }
 
 /* Brand Token Placement */
@@ -31,7 +33,7 @@
 .register-card {
   width: 100%;
   max-width: 400px;
-  margin: 60px auto 0 auto;
+  margin: 24px auto 0 auto;
   background: transparent !important;
   box-shadow: none !important;
   border: none !important;
@@ -41,9 +43,10 @@
 /* Right Art Side with Image background */
 .register-art-side {
   flex: 1;
-  background-image: url('https://cdn.discordapp.com/attachments/1021731951708741644/1519432787936018562/image-from-rawpixel-id-5960236-jpeg.jpg?ex=6a3d898e&is=6a3c380e&hm=7a5eb5cd19ac400b4b6d45801b2c0000984b79b4b05357b58a6de1d068895bcf&'); /* Replace with image asset link */
+  background-color: #7ab6e8;
+  background-image: url('/demetraBackground2.png');
   background-size: cover;
-  background-position: center;
+  background-position: center bottom;
   position: relative;
   display: none; /* Hidden on mobile viewports */
 }
@@ -70,10 +73,10 @@
 }
 
 .quote-text {
-  font-size: 2rem;
+  font-family: 'Cinzel', serif;
+  font-size: 1.8rem;
   line-height: 1.3;
   margin-bottom: 12px;
-  font-family: inherit;
 }
 
 .quote-author {

@@ -7,7 +7,7 @@
 .app-container:has(.instruments-page) .nav-link { color: rgba(255,255,255,0.7) !important; }
 .app-container:has(.instruments-page) .nav-btn { background-color: rgba(255,255,255,0.15) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.2) !important; }
 
-.instruments-page { width: 100%; max-height: 100vh; background: #10192a;}
+.instruments-page { width: 100%; background: #10192a;}
 
 .instruments-hero {
   width: 100%; padding: 110px 60px 44px; box-sizing: border-box;
@@ -2241,14 +2241,15 @@
    internal panel scroll, and restore normal document flow on mobile. */
 @media (min-width: 1101px) {
   .app-container:has(.instruments-page) {
-    height: 100dvh;
-    overflow: hidden;
+    min-height: 100dvh;
+    height: auto;
+    overflow: visible;
   }
 
   .instruments-page {
-    height: 100dvh;
-    min-height: 0;
-    overflow: hidden;
+    min-height: 100dvh;
+    height: auto;
+    overflow: visible;
   }
 
   .ins-content {
@@ -2423,14 +2424,34 @@
 @media (min-width: 1101px) {
   .app-container:has(.instruments-page),
   .instruments-page {
-    height: 100vh !important;
+    height: auto !important;
     min-height: 100vh !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 }
 
 .app-container:has(.ins-fs-overlay) .nav-container {
   display: none !important;
+}
+
+/* ── Generic fullscreen (violin, guitar, flute, drums) ─────────────────────── */
+.ins-fs-generic-body {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ins-fs-generic-card {
+  width: min(1100px, 92vw);
+  max-height: 84vh;
+  overflow-y: auto;
+}
+
+.ins-fs-generic-card svg {
+  max-width: 100% !important;
 }
 
 .ins-fs-overlay {

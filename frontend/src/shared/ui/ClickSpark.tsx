@@ -8,6 +8,7 @@ interface ClickSparkProps {
   duration?: number;
   easing?: string;
   extraScale?: number;
+  enabled?: boolean;
   children?: React.ReactNode;
 }
 
@@ -25,6 +26,7 @@ export default function ClickSpark({
   duration = 400,
   easing = 'ease-out',
   extraScale = 1.0,
+  enabled = true,
   children,
 }: ClickSparkProps) {
   const [sparks, setSparks] = useState<SparkInstance[]>([]);
@@ -32,7 +34,7 @@ export default function ClickSpark({
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || !enabled) return;
 
     const handleClick = (e: MouseEvent) => {
       const rect = container.getBoundingClientRect();
@@ -56,7 +58,7 @@ export default function ClickSpark({
 
     container.addEventListener('click', handleClick);
     return () => container.removeEventListener('click', handleClick);
-  }, [duration]);
+  }, [duration, enabled]);
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%' }}>

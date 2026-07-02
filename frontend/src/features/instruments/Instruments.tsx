@@ -340,6 +340,46 @@ function FullscreenPiano({ playNote, onClose }: { playNote: (f:number, i:Instrum
   );
 }
 
+// ── Generic fullscreen wrapper for non-piano instruments ─────────────────────
+function FullscreenInstrument({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="ins-fs-overlay">
+      <div className="ins-fs-cloud ins-fs-cloud--a" />
+      <div className="ins-fs-cloud ins-fs-cloud--b" />
+      <div className="ins-fs-cloud ins-fs-cloud--c" />
+
+      <div className="ins-fs-inner">
+        <div className="ins-fs-topbar">
+          <div className="ins-fs-topbar-left">
+            <span className="ins-fs-studio-label">{label} Studio</span>
+          </div>
+          <div className="ins-fs-topbar-right">
+            <button className="ins-fs-exit-btn" onClick={onClose}>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M1 5H5V1"/><path d="M13 5H9V1"/><path d="M1 9H5V13"/><path d="M13 9H9V13"/></svg>
+              Exit
+            </button>
+          </div>
+        </div>
+
+        <div className="ins-fs-generic-body">
+          <div className="ins-player-card ins-fs-generic-card">
+            <div className="ins-player-card-grain" />
+            {children}
+          </div>
+        </div>
+
+        <p className="ins-fs-hint"><strong>Esc</strong> to exit</p>
+      </div>
+    </div>
+  );
+}
+
 // ── Instrument Players ───────────────────────────────────────────────────────
 function PianoPlayer({ playNote }: { playNote: (f: number, i: InstrumentId) => void }) {
   const [active, setActive] = useState<Set<string>>(new Set());
@@ -788,18 +828,16 @@ export default function Instruments({ onNavigate: _onNavigate }: InstrumentsProp
           <section className="ins-player-col">
             <div className="ins-player-topbar">
               <span className="ins-player-title">The {inst.label}</span>
-              {selectedInstrument === 'piano' && (
-                <button className="ins-fullscreen-btn" onClick={openFullscreen}>
-                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 1H1V5"/><path d="M9 1H13V5"/>
-                    <path d="M5 13H1V9"/><path d="M9 13H13V9"/>
-                  </svg>
-                  Fullscreen
-                </button>
-              )}
+              <button className="ins-fullscreen-btn" onClick={openFullscreen}>
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 1H1V5"/><path d="M9 1H13V5"/>
+                  <path d="M5 13H1V9"/><path d="M9 13H13V9"/>
+                </svg>
+                Fullscreen
+              </button>
             </div>
-            {selectedInstrument === 'piano' && showRotatePrompt && (
-              <div className="ins-rotate-note">Rotate your phone to landscape to open fullscreen piano.</div>
+            {showRotatePrompt && (
+              <div className="ins-rotate-note">Rotate your phone to landscape to open the fullscreen instrument.</div>
             )}
 
             {/* Ivory piano casing card */}
@@ -830,7 +868,13 @@ export default function Instruments({ onNavigate: _onNavigate }: InstrumentsProp
 
       {/* Fullscreen overlay */}
       {showFullscreen && (
-        <FullscreenPiano playNote={playNote} onClose={() => setShowFullscreen(false)} />
+        selectedInstrument === 'piano' ? (
+          <FullscreenPiano playNote={playNote} onClose={() => setShowFullscreen(false)} />
+        ) : (
+          <FullscreenInstrument label={inst.label} onClose={() => setShowFullscreen(false)}>
+            {renderPlayer()}
+          </FullscreenInstrument>
+        )
       )}
     </div>
   );
