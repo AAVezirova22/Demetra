@@ -9,6 +9,34 @@ interface InstrumentsProps {
 interface Note { id: string; title: string; content: string; instrument: string; createdAt: string; shared: boolean; sharedWith: string[]; }
 type InstrumentId = 'piano' | 'violin' | 'guitar' | 'flute' | 'drums';
 
+const NOTES_CACHE_KEY = 'demetra.instrumentNotes';
+
+const isNote = (value: unknown): value is Note => {
+  if (!value || typeof value !== 'object') return false;
+  const note = value as Partial<Note>;
+  return (
+    typeof note.id === 'string' &&
+    typeof note.title === 'string' &&
+    typeof note.content === 'string' &&
+    typeof note.instrument === 'string' &&
+    typeof note.createdAt === 'string' &&
+    typeof note.shared === 'boolean' &&
+    Array.isArray(note.sharedWith) &&
+    note.sharedWith.every(item => typeof item === 'string')
+  );
+};
+
+const loadCachedNotes = (): Note[] => {
+  try {
+    const cached = localStorage.getItem(NOTES_CACHE_KEY);
+    if (!cached) return [];
+    const parsed = JSON.parse(cached);
+    return Array.isArray(parsed) ? parsed.filter(isNote) : [];
+  } catch {
+    return [];
+  }
+};
+
 // ── Instrument Definitions ────────────────────────────────────────────────────
 const INSTRUMENTS: { id: InstrumentId; label: string; emoji: string; roman: string; desc: string; }[] = [
   { id: 'piano',  label: 'Piano',  emoji: '🎹', roman: 'I',   desc: 'Classical keyboard, full range' },
@@ -513,13 +541,8 @@ function DrumKit({ playNote }: { playNote: (f: number, i: InstrumentId) => void 
 }
 
 // ── Notes Panel ───────────────────────────────────────────────────────────────
-const INITIAL_NOTES: Note[] = [
-  { id: '1', title: 'Chopin Étude fingering notes', content: 'RH: 1-2-3-1-2-3-4-5 for the opening passage\nPractice LH octaves slowly at ♩=60 first\nWatch the thumb crossing on the chromatic run in bar 4', instrument: 'piano', createdAt: '2026-06-10', shared: false, sharedWith: [] },
-  { id: '2', title: 'Vibrato exercise', content: 'Slow bow with wrist vibrato\nStart on open A, build speed gradually\nKeep the elbow relaxed — tension is the enemy', instrument: 'violin', createdAt: '2026-06-20', shared: true, sharedWith: ['Anna Kostadinova', 'Hristo Nikolov'] },
-];
-
 function NotesPanel({ instrument }: { instrument: InstrumentId }) {
-  const [notes, setNotes] = useState<Note[]>(INITIAL_NOTES);
+  const [notes, setNotes] = useState<Note[]>(loadCachedNotes);
   const [editing, setEditing] = useState<Note | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [showShare, setShowShare] = useState<Note | null>(null);
@@ -528,6 +551,10 @@ function NotesPanel({ instrument }: { instrument: InstrumentId }) {
 
   const filtered = notes.filter(n => n.instrument === instrument);
   const allNotes = notes;
+
+  useEffect(() => {
+    localStorage.setItem(NOTES_CACHE_KEY, JSON.stringify(notes));
+  }, [notes]);
 
   const startNew = () => {
     const n: Note = { id: Date.now().toString(), title: '', content: '', instrument, createdAt: new Date().toISOString().split('T')[0], shared: false, sharedWith: [] };
@@ -541,15 +568,24 @@ function NotesPanel({ instrument }: { instrument: InstrumentId }) {
     setEditing(null); setIsNew(false);
   };
 
-  const del = (id: string) => setNotes(prev => prev.filter(n => n.id !== id));
+  const del = (id: string) => {
+    setNotes(prev => prev.filter(n => n.id !== id));
+    if (editing?.id === id) {
+      setEditing(null);
+      setIsNew(false);
+    }
+    if (showShare?.id === id) {
+      setShowShare(null);
+      setShareMsg('');
+    }
+  };
 
   const shareNote = () => {
     if (!showShare || !shareInput.trim()) return;
     const name = shareInput.trim();
-    setNotes(prev => prev.map(n => n.id === showShare.id
-      ? { ...n, shared: true, sharedWith: [...new Set([...n.sharedWith, name])] }
-      : n
-    ));
+    const updatedNote = { ...showShare, shared: true, sharedWith: [...new Set([...showShare.sharedWith, name])] };
+    setNotes(prev => prev.map(n => n.id === showShare.id ? updatedNote : n));
+    setShowShare(updatedNote);
     setShareMsg(`Shared with ${name}`);
     setShareInput('');
     setTimeout(() => setShareMsg(''), 2000);
