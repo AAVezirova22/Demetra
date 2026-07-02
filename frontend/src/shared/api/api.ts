@@ -31,8 +31,20 @@ export type EventRecord = {
   location: string | null;
   category: string | null;
   capacity: number;
+  price: number;
+  vipSeatPrice: number;
+  seatingMap?: {
+    rows: number;
+    cols: number;
+    stageShape: 'rect' | 'arc' | 'thrust';
+    seats: StageSeat[];
+  } | null;
   status: 'DRAFT' | 'PUBLISHED' | 'CANCELLED' | 'CLOSED';
   registered: number;
+  activeSeats?: {
+    seatLabel: string | null;
+    seatType: string | null;
+  }[];
   organizerId?: string;
   organizer?: {
     id: string;
@@ -55,6 +67,8 @@ export type RegistrationRecord = {
   eventId: string;
   userId: string;
   waitlistPosition: number | null;
+  seatLabel: string | null;
+  seatType: string | null;
   createdAt: string;
   updatedAt: string;
   event?: EventRecord;
@@ -259,6 +273,14 @@ export async function createEvent(token: string, input: {
   startsAt?: string;
   location?: string;
   capacity: number;
+  price: number;
+  vipSeatPrice: number;
+  seatingMap?: {
+    rows: number;
+    cols: number;
+    stageShape: 'rect' | 'arc' | 'thrust';
+    seats: StageSeat[];
+  } | null;
 }) {
   return apiRequest<{ event: EventRecord }>('/events', {
     method: 'POST',
@@ -269,13 +291,13 @@ export async function createEvent(token: string, input: {
   });
 }
 
-export async function registerForEvent(token: string, eventId: string) {
+export async function registerForEvent(token: string, eventId: string, seatLabel?: string) {
   return apiRequest<{ success: boolean; registration: RegistrationRecord }>('/register', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ eventId }),
+    body: JSON.stringify({ eventId, seatLabel }),
   });
 }
 
@@ -294,6 +316,14 @@ export async function updateEvent(token: string, eventId: string, input: {
   startsAt?: string;
   location?: string;
   capacity: number;
+  price: number;
+  vipSeatPrice: number;
+  seatingMap?: {
+    rows: number;
+    cols: number;
+    stageShape: 'rect' | 'arc' | 'thrust';
+    seats: StageSeat[];
+  } | null;
 }) {
   return apiRequest<{ event: EventRecord }>(`/events/${encodeURIComponent(eventId)}`, {
     method: 'PATCH',

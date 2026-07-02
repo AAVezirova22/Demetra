@@ -34,6 +34,7 @@ const RegistrationStatus = {
   CANCELLED: 'CANCELLED',
 } as const;
 
+
 const OrganizationKind = {
   MUSIC_SCHOOL: 'MUSIC_SCHOOL',
   CONSERVATORY: 'CONSERVATORY',
@@ -407,8 +408,18 @@ function parseEventInput(body: any) {
   const category = typeof body.category === 'string' ? body.category.trim().replace(/\s+/g, ' ') : '';
   const location = typeof body.location === 'string' ? body.location.trim().replace(/\s+/g, ' ') : '';
   const capacity = Number(body.capacity);
+  const price = Number(body.price ?? 0);
+  const vipSeatPrice = Number(body.vipSeatPrice ?? price);
   const startsAt = typeof body.startsAt === 'string' && body.startsAt.trim()
     ? new Date(body.startsAt)
+    : null;
+  const seatingMap = body.seatingMap && typeof body.seatingMap === 'object'
+    ? {
+        rows: Number(body.seatingMap.rows) || 0,
+        cols: Number(body.seatingMap.cols) || 0,
+        stageShape: typeof body.seatingMap.stageShape === 'string' ? body.seatingMap.stageShape : 'rect',
+        seats: Array.isArray(body.seatingMap.seats) ? body.seatingMap.seats : [],
+      }
     : null;
 
   if (title.length < 2 || title.length > 160) return { error: 'Event title must be between 2 and 160 characters.' };
@@ -416,7 +427,10 @@ function parseEventInput(body: any) {
   if (category.length > 80) return { error: 'Category must be 80 characters or less.' };
   if (location.length > 180) return { error: 'Location must be 180 characters or less.' };
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100000) return { error: 'Capacity must be between 1 and 100000.' };
+  if (!Number.isFinite(price) || price < 0 || price > 100000) return { error: 'Event price must be between 0 and 100000.' };
+  if (!Number.isFinite(vipSeatPrice) || vipSeatPrice < 0 || vipSeatPrice > 100000) return { error: 'VIP seat price must be between 0 and 100000.' };
   if (startsAt && Number.isNaN(startsAt.getTime())) return { error: 'Event date is invalid.' };
+  if (seatingMap && seatingMap.seats.length > 2000) return { error: 'Seating map is too large.' };
 
   return {
     title,
@@ -424,8 +438,51 @@ function parseEventInput(body: any) {
     category: category || null,
     location: location || null,
     capacity,
+    price,
+    vipSeatPrice,
+    seatingMap,
     startsAt,
   };
+}
+
+function normalizeSeatLabel(value: unknown) {
+  return typeof value === 'string' ? value.trim().toUpperCase().replace(/\s+/g, '') : '';
+}
+
+function seatingSeats(map: any) {
+  const parsed = typeof map === 'string' ? JSON.parse(map) : map;
+  return parsed && typeof parsed === 'object' && Array.isArray(parsed.seats) ? parsed.seats : [];
+}
+
+function seatLabelFromSeat(seat: any) {
+  const row = Number(seat?.row);
+  const col = Number(seat?.col);
+  if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || col < 0) return '';
+  return `${String.fromCharCode(65 + row)}${col + 1}`;
+}
+
+function seatTypeFromSeat(seat: any) {
+  return seat?.status === 'vip' ? 'VIP' : 'STANDARD';
+}
+
+function findSeatByLabel(map: any, label: string) {
+  return seatingSeats(map).find((seat: any) => seatLabelFromSeat(seat) === label) ?? null;
+}
+
+function firstAvailableSeat(map: any, occupied: Set<string>) {
+  return seatingSeats(map).find((seat: any) => {
+    const label = seatLabelFromSeat(seat);
+    return label && seat.status !== 'blocked' && !occupied.has(label);
+  }) ?? null;
+}
+
+function fallbackSeatLabel(capacity: number, occupied: Set<string>) {
+  for (let index = 0; index < capacity; index += 1) {
+    const row = String.fromCharCode(65 + Math.floor(index / 12));
+    const label = `${row}${(index % 12) + 1}`;
+    if (!occupied.has(label)) return label;
+  }
+  return null;
 }
 
 function publicUser(user: {
@@ -669,6 +726,8 @@ function publicRegistration(registration: any) {
     userId: registration.userId,
     eventId: registration.eventId,
     waitlistPosition: registration.waitlistPosition ?? null,
+    seatLabel: registration.seatLabel ?? null,
+    seatType: registration.seatType ?? null,
     createdAt: registration.createdAt,
     updatedAt: registration.updatedAt,
     event: registration.event
@@ -1467,15 +1526,20 @@ app.get('/api/events', async (_, res) => {
     include: {
       organizer: { select: { id: true, name: true } },
       organization: { select: { id: true, name: true, kind: true } },
+      registrations: {
+        where: { status: RegistrationStatus.CONFIRMED, seatLabel: { not: null } },
+        select: { seatLabel: true, seatType: true },
+      },
       _count: { select: { registrations: { where: { status: 'CONFIRMED' } } } },
     },
     orderBy: [{ startsAt: 'asc' }, { createdAt: 'desc' }],
   });
 
   res.json({
-    events: events.map(({ _count, ...event }: any) => ({
+    events: events.map(({ _count, registrations, ...event }: any) => ({
       ...event,
       registered: _count.registrations,
+      activeSeats: registrations,
     })),
   });
 });
@@ -1489,15 +1553,20 @@ app.get('/api/events/my', requireAuth, requireRole(Role.ORGANIZER), async (req, 
     include: {
       organizer: { select: { id: true, name: true } },
       organization: { select: { id: true, name: true, kind: true } },
+      registrations: {
+        where: { status: RegistrationStatus.CONFIRMED, seatLabel: { not: null } },
+        select: { seatLabel: true, seatType: true },
+      },
       _count: { select: { registrations: { where: { status: 'CONFIRMED' } } } },
     },
     orderBy: [{ startsAt: 'asc' }, { createdAt: 'desc' }],
   });
 
   res.json({
-    events: events.map(({ _count, ...event }: any) => ({
+    events: events.map(({ _count, registrations, ...event }: any) => ({
       ...event,
       registered: _count.registrations,
+      activeSeats: registrations,
     })),
   });
 });
@@ -1567,6 +1636,9 @@ app.post('/api/events', requireAuth, requireRole(Role.ORGANIZER), async (req, re
           startsAt: input.startsAt,
           location: input.location,
           capacity: input.capacity,
+          price: input.price,
+          vipSeatPrice: input.vipSeatPrice,
+          seatingMap: input.seatingMap,
           status: EventStatus.PUBLISHED,
           organizerId: req.user!.sub,
           organizationId: access.organization.id,
@@ -1633,6 +1705,9 @@ app.patch('/api/events/:id', requireAuth, requireRole(Role.ORGANIZER), async (re
           startsAt: input.startsAt,
           location: input.location,
           capacity: input.capacity,
+          price: input.price,
+          vipSeatPrice: input.vipSeatPrice,
+          seatingMap: input.seatingMap,
           reminderSentAt: existing.startsAt?.getTime() === input.startsAt?.getTime() ? existing.reminderSentAt : null,
         },
         include: {
@@ -1740,6 +1815,7 @@ app.patch('/api/events/:id/cancel', requireAuth, requireRole(Role.ORGANIZER), as
 app.post('/api/register', requireAuth, async (req, res) => {
   const userId = req.user!.sub;
   const { eventId } = req.body;
+  const requestedSeatLabel = normalizeSeatLabel(req.body?.seatLabel);
 
   if (!eventId || typeof eventId !== 'string') {
     return res.status(400).json({ error: 'eventId is required' });
@@ -1747,8 +1823,8 @@ app.post('/api/register', requireAuth, async (req, res) => {
 
   try {
     const registration = await prisma.$transaction(async (tx: any) => {
-      const lockQuery = await tx.$queryRaw<{ id: string, capacity: number, status: string }[]>`
-        SELECT id, capacity, status FROM \`Event\`
+      const lockQuery = await tx.$queryRaw<{ id: string, capacity: number, status: string, seatingMap: any }[]>`
+        SELECT id, capacity, status, seatingMap FROM \`Event\`
         WHERE id = ${eventId} 
         FOR UPDATE
       `;
@@ -1775,17 +1851,48 @@ app.post('/api/register', requireAuth, async (req, res) => {
 
       const newStatus = confirmedCount < event.capacity ? RegistrationStatus.CONFIRMED : RegistrationStatus.WAITLISTED;
       const now = new Date();
+      let seatLabel: string | null = null;
+      let seatType: string | null = null;
+
+      if (newStatus === RegistrationStatus.CONFIRMED) {
+        const occupiedSeats = await tx.registration.findMany({
+          where: { eventId, status: RegistrationStatus.CONFIRMED, seatLabel: { not: null } },
+          select: { seatLabel: true },
+        });
+        const occupied = new Set<string>(occupiedSeats.map((seat: { seatLabel: string | null }) => seat.seatLabel).filter(Boolean) as string[]);
+
+        if (requestedSeatLabel) {
+          const selectedSeat = findSeatByLabel(event.seatingMap, requestedSeatLabel);
+          if (!selectedSeat || selectedSeat.status === 'blocked') throw new Error('Invalid seat');
+          if (occupied.has(requestedSeatLabel)) throw new Error('Seat already taken');
+          seatLabel = requestedSeatLabel;
+          seatType = seatTypeFromSeat(selectedSeat);
+        } else if (seatingSeats(event.seatingMap).length > 0) {
+          const nextSeat = firstAvailableSeat(event.seatingMap, occupied);
+          if (nextSeat) {
+            seatLabel = seatLabelFromSeat(nextSeat);
+            seatType = seatTypeFromSeat(nextSeat);
+          }
+        } else {
+          seatLabel = fallbackSeatLabel(event.capacity, occupied);
+          seatType = seatLabel ? 'STANDARD' : null;
+        }
+
+        if (!seatLabel) throw new Error('No seats available');
+      }
 
       const newRegistration = existingRegistration
         ? await tx.registration.update({
             where: { id: existingRegistration.id },
-            data: { status: newStatus, createdAt: now, updatedAt: now },
+            data: { status: newStatus, seatLabel, seatType, createdAt: now, updatedAt: now },
           })
         : await tx.registration.create({
             data: {
               userId,
               eventId,
-              status: newStatus
+              status: newStatus,
+              seatLabel,
+              seatType,
             }
           });
 
@@ -1819,6 +1926,15 @@ app.post('/api/register', requireAuth, async (req, res) => {
     if (error instanceof Error && error.message === 'Event is not open for registration') {
       return res.status(409).json({ error: 'Event is not open for registration.' });
     }
+    if (error instanceof Error && error.message === 'Invalid seat') {
+      return res.status(400).json({ error: 'Choose a valid seat for this event.' });
+    }
+    if (error instanceof Error && error.message === 'Seat already taken') {
+      return res.status(409).json({ error: 'That seat is already taken.' });
+    }
+    if (error instanceof Error && error.message === 'No seats available') {
+      return res.status(409).json({ error: 'No seats are available.' });
+    }
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
@@ -1830,8 +1946,8 @@ app.delete('/api/events/:id/registration', requireAuth, async (req, res) => {
 
   try {
     const result = await prisma.$transaction(async (tx: any) => {
-      const lockQuery = await tx.$queryRaw<{ id: string, capacity: number }[]>`
-        SELECT id, capacity FROM \`Event\`
+      const lockQuery = await tx.$queryRaw<{ id: string, capacity: number, seatingMap: any }[]>`
+        SELECT id, capacity, seatingMap FROM \`Event\`
         WHERE id = ${eventId}
         FOR UPDATE
       `;
@@ -1866,9 +1982,22 @@ app.delete('/api/events/:id/registration', requireAuth, async (req, res) => {
         });
 
         if (nextWaitlisted) {
+          const occupiedSeats = await tx.registration.findMany({
+            where: { eventId, status: RegistrationStatus.CONFIRMED, seatLabel: { not: null } },
+            select: { seatLabel: true },
+          });
+          const occupied = new Set<string>(occupiedSeats.map((seat: { seatLabel: string | null }) => seat.seatLabel).filter(Boolean) as string[]);
+          const promotedSeat = firstAvailableSeat(lockQuery[0]!.seatingMap, occupied);
+          const promotedSeatLabel = promotedSeat ? seatLabelFromSeat(promotedSeat) : null;
+          const fallbackPromotedSeatLabel = promotedSeatLabel ?? fallbackSeatLabel(lockQuery[0]!.capacity, occupied);
+
           promoted = await tx.registration.update({
             where: { id: nextWaitlisted.id },
-            data: { status: RegistrationStatus.CONFIRMED },
+            data: {
+              status: RegistrationStatus.CONFIRMED,
+              seatLabel: fallbackPromotedSeatLabel,
+              seatType: promotedSeat ? seatTypeFromSeat(promotedSeat) : fallbackPromotedSeatLabel ? 'STANDARD' : null,
+            },
           });
 
           await tx.outboxEvent.create({

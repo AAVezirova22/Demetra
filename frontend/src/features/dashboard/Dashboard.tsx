@@ -415,6 +415,8 @@ function CreateEventModal({ layouts, initialLayout, existingEvent, onClose, onSa
   const [location, setLocation] = useState(existingEvent?.location ?? initialLayout?.venue ?? '');
   const [selectedLayout, setSelectedLayout] = useState<StageLayout | null>(initialLayout);
   const [capacity, setCapacity] = useState(existingEvent?.capacity ?? (initialLayout ? initialLayout.seats.filter(seat => seat.status !== 'blocked').length : 120));
+  const [price, setPrice] = useState(existingEvent?.price ?? 0);
+  const [vipSeatPrice, setVipSeatPrice] = useState(existingEvent?.vipSeatPrice ?? existingEvent?.price ?? 0);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const isEditing = Boolean(existingEvent);
@@ -442,6 +444,16 @@ function CreateEventModal({ layouts, initialLayout, existingEvent, onClose, onSa
         startsAt,
         location: location.trim(),
         capacity,
+        price,
+        vipSeatPrice,
+        seatingMap: selectedLayout
+          ? {
+              rows: selectedLayout.rows,
+              cols: selectedLayout.cols,
+              stageShape: selectedLayout.stageShape,
+              seats: selectedLayout.seats,
+            }
+          : existingEvent?.seatingMap ?? null,
       };
       const { event } = existingEvent
         ? await updateEvent(auth.token, existingEvent.id, input)
@@ -490,6 +502,10 @@ function CreateEventModal({ layouts, initialLayout, existingEvent, onClose, onSa
           <div className="create-venue-step">
             <div className="form-group"><label>Location</label><input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Main Concert Hall" /></div>
             <div className="form-group"><label>Capacity</label><input type="number" min={1} max={100000} value={capacity} onChange={e => setCapacity(Math.max(1, Number(e.target.value) || 1))} /></div>
+            <div className="create-form-row">
+              <div className="form-group"><label>Standard price</label><input type="number" min={0} step="0.01" value={price} onChange={e => setPrice(Math.max(0, Number(e.target.value) || 0))} /></div>
+              <div className="form-group"><label>VIP seat price</label><input type="number" min={0} step="0.01" value={vipSeatPrice} onChange={e => setVipSeatPrice(Math.max(0, Number(e.target.value) || 0))} /></div>
+            </div>
             <div className="layout-selection-grid">
               {layouts.length === 0 && <div className="no-events-state">No saved stage layouts yet.</div>}
               {layouts.map(l => (
@@ -511,6 +527,7 @@ function CreateEventModal({ layouts, initialLayout, existingEvent, onClose, onSa
               <p>{description || 'No description yet.'}</p>
               <div className="preview-meta">{date || 'Date TBA'} {time ? `/ ${time}` : ''}</div>
               <div className="preview-meta">{location || 'Location TBA'} / {capacity} seats</div>
+              <div className="preview-meta">Standard: {price > 0 ? `$${price.toFixed(2)}` : 'Free'} / VIP: {vipSeatPrice > 0 ? `$${vipSeatPrice.toFixed(2)}` : 'Free'}</div>
             </div>
           </div>
         )}

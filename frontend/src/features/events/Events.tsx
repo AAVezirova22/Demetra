@@ -9,6 +9,7 @@ import {
   type EventRecord,
   type RegistrationRecord,
   type RegistrationStatus,
+  type StageSeat,
 } from '../../shared/api/api';
 import './Events.css';
 
@@ -31,6 +32,10 @@ interface Event {
   capacity: number;
   registered: number;
   price: string;
+  priceAmount: number;
+  vipSeatPrice: number;
+  activeSeats: { seatLabel: string | null; seatType: string | null }[];
+  seatingMap: EventRecord['seatingMap'];
   status: 'open' | 'almost-full' | 'full' | 'past';
   gradient: string;
   emoji: string;
@@ -40,6 +45,13 @@ interface Event {
   venueLayout: 'concert-hall' | 'amphitheater' | 'classroom' | 'outdoor';
   tags: string[];
 }
+
+type SelectableSeat = {
+  label: string;
+  type: 'STANDARD' | 'VIP';
+  taken: boolean;
+  seat: StageSeat;
+};
 
 const EVENT_VISUALS = [
   { gradient: 'linear-gradient(135deg, #1a2a4a 0%, #2d4a7a 60%, #162a43 100%)', emoji: 'EV', layout: 'concert-hall' as const },
@@ -67,6 +79,10 @@ function formatTime(value: string | null) {
   return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }
 
+function formatMoney(value: number) {
+  return value > 0 ? `$${value.toFixed(2)}` : 'Free';
+}
+
 function mapApiEvent(event: EventRecord, index: number): Event {
   const visual = EVENT_VISUALS[index % EVENT_VISUALS.length]!;
   const registered = event.registered ?? 0;
@@ -91,7 +107,11 @@ function mapApiEvent(event: EventRecord, index: number): Event {
     longDescription: description,
     capacity,
     registered,
-    price: 'Free',
+    price: formatMoney(event.price ?? 0),
+    priceAmount: event.price ?? 0,
+    vipSeatPrice: event.vipSeatPrice ?? event.price ?? 0,
+    activeSeats: event.activeSeats ?? [],
+    seatingMap: event.seatingMap ?? null,
     status: isPast ? 'past' : isFull ? 'full' : fill > 0.85 ? 'almost-full' : 'open',
     gradient: visual.gradient,
     emoji: visual.emoji,
@@ -257,21 +277,45 @@ function EventDetail({ event, registration, onBack, onNavigate, onRegistered, on
   onBack: () => void;
   onNavigate: EventsProps['onNavigate'];
   onRegistered: (eventId: string, registration: RegistrationRecord) => void;
-  onCancelled: (eventId: string, previousStatus: RegistrationStatus, promoted: boolean) => void;
+  onCancelled: (eventId: string, previousStatus: RegistrationStatus, promoted: boolean, registration: RegistrationRecord | null) => void;
 }) {
   const registrationStatus = registration?.status ?? null;
   const [joinState, setJoinState] = useState<'idle' | 'joining' | 'joined' | 'waitlist' | 'cancelling'>(
     registrationStatus === 'CONFIRMED' ? 'joined' : registrationStatus === 'WAITLISTED' ? 'waitlist' : 'idle'
   );
   const [joinError, setJoinError] = useState('');
+  const [selectedSeat, setSelectedSeat] = useState('');
+  const [seatModalOpen, setSeatModalOpen] = useState(false);
   const isFull = event.registered >= event.capacity;
   const isPast = event.status === 'past';
   const pct = Math.round((event.registered / event.capacity) * 100);
+  const takenSeats = new Set(event.activeSeats.map(seat => seat.seatLabel).filter(Boolean) as string[]);
+  const selectableSeats: SelectableSeat[] = event.seatingMap
+    ? event.seatingMap.seats
+        .filter(seat => seat.status !== 'blocked')
+        .map(seat => {
+          const label = `${String.fromCharCode(65 + seat.row)}${seat.col + 1}`;
+          return {
+            label,
+            type: seat.status === 'vip' ? 'VIP' : 'STANDARD',
+            taken: takenSeats.has(label),
+            seat,
+          };
+        })
+    : [];
+  const selectedSeatType = selectableSeats.find(seat => seat.label === selectedSeat)?.type ?? 'STANDARD';
+  const selectedSeatPrice = selectedSeatType === 'VIP' ? event.vipSeatPrice : event.priceAmount;
+  const seatMapWidth = event.seatingMap ? event.seatingMap.cols * 30 + 58 : 0;
+  const seatMapHeight = event.seatingMap ? event.seatingMap.rows * 28 + 42 : 0;
 
   useEffect(() => {
     if (joinState === 'joining' || joinState === 'cancelling') return;
     setJoinState(registrationStatus === 'CONFIRMED' ? 'joined' : registrationStatus === 'WAITLISTED' ? 'waitlist' : 'idle');
   }, [registrationStatus]);
+
+  useEffect(() => {
+    if (registration?.seatLabel) setSelectedSeat(registration.seatLabel);
+  }, [registration?.seatLabel]);
 
   const handleJoin = async () => {
     const auth = getStoredAuth();
@@ -279,17 +323,32 @@ function EventDetail({ event, registration, onBack, onNavigate, onRegistered, on
       onNavigate('login');
       return;
     }
+    if (!isFull && event.seatingMap && !selectedSeat) {
+      setJoinError('Choose a seat before registering.');
+      return;
+    }
 
     setJoinState('joining');
     setJoinError('');
     try {
-      const { registration } = await registerForEvent(auth.token, event.id);
+      const { registration } = await registerForEvent(auth.token, event.id, selectedSeat || undefined);
       setJoinState(registration.status === 'WAITLISTED' ? 'waitlist' : 'joined');
       onRegistered(event.id, registration);
+      setSeatModalOpen(false);
     } catch (err) {
       setJoinState('idle');
       setJoinError(err instanceof Error ? err.message : 'Could not register for this event.');
     }
+  };
+
+  const openSeatModal = () => {
+    const auth = getStoredAuth();
+    if (!auth) {
+      onNavigate('login');
+      return;
+    }
+    setJoinError('');
+    setSeatModalOpen(true);
   };
 
   const handleCancel = async () => {
@@ -300,7 +359,7 @@ function EventDetail({ event, registration, onBack, onNavigate, onRegistered, on
     setJoinError('');
     try {
       const { promoted } = await cancelEventRegistration(auth.token, event.id);
-      onCancelled(event.id, registrationStatus, Boolean(promoted));
+      onCancelled(event.id, registrationStatus, Boolean(promoted), registration);
       setJoinState('idle');
     } catch (err) {
       setJoinState(registrationStatus === 'CONFIRMED' ? 'joined' : 'waitlist');
@@ -417,6 +476,9 @@ function EventDetail({ event, registration, onBack, onNavigate, onRegistered, on
           <div className="sidebar-card sidebar-ticket-card">
             <div className="sidebar-card-label">Admission</div>
             <div className="sidebar-price">{event.price}</div>
+            {event.vipSeatPrice !== event.priceAmount && (
+              <div className="sidebar-price-sub">VIP {formatMoney(event.vipSeatPrice)}</div>
+            )}
 
             <div className="sidebar-capacity-info">
               <div className="sidebar-cap-row">
@@ -440,7 +502,7 @@ function EventDetail({ event, registration, onBack, onNavigate, onRegistered, on
             ) : joinState === 'joined' ? (
               <>
                 <div className="join-success">
-                  <span>Done</span> You're registered!
+                  <span>Done</span> {registration?.seatLabel ? `Seat ${registration.seatLabel}` : "You're registered!"}
                 </div>
                 <button className="join-btn join-btn--waitlist" onClick={handleCancel} style={{ marginTop: 10 }}>Cancel registration</button>
               </>
@@ -457,7 +519,7 @@ function EventDetail({ event, registration, onBack, onNavigate, onRegistered, on
             ) : (
               <button
                 className={`join-btn ${isFull ? 'join-btn--waitlist' : ''} ${joinState === 'joining' ? 'join-btn--loading' : ''}`}
-                onClick={handleJoin}
+                onClick={event.seatingMap && !isFull ? openSeatModal : handleJoin}
                 disabled={joinState === 'joining'}
               >
                 {joinState === 'joining' ? (
@@ -485,6 +547,63 @@ function EventDetail({ event, registration, onBack, onNavigate, onRegistered, on
           </div>
         </aside>
       </div>
+
+      {seatModalOpen && event.seatingMap && (
+        <div className="seat-modal-backdrop" onClick={() => setSeatModalOpen(false)}>
+          <div className="seat-modal" role="dialog" aria-modal="true" aria-label="Choose a seat" onClick={(modalEvent) => modalEvent.stopPropagation()}>
+            <div className="seat-modal-header">
+              <div>
+                <div className="sidebar-card-label">Choose seat</div>
+                <h2>{event.title}</h2>
+              </div>
+              <button type="button" className="modal-close seat-modal-close" onClick={() => setSeatModalOpen(false)}>x</button>
+            </div>
+            <div className="seat-modal-summary">
+              <span>{selectedSeat ? `Selected ${selectedSeat}` : 'Select an available seat'}</span>
+              <b>{selectedSeat ? formatMoney(selectedSeatPrice) : event.price}</b>
+            </div>
+            <div className="seat-modal-map-wrap">
+              <svg className="seat-picker-map seat-picker-map--modal" viewBox={`0 0 ${seatMapWidth} ${seatMapHeight}`}>
+                {event.seatingMap && Array.from({ length: event.seatingMap.cols }, (_, col) => (
+                  <text key={`col-${col}`} className="seat-map-axis-label" x={50 + col * 30} y="16" textAnchor="middle">{col + 1}</text>
+                ))}
+                {event.seatingMap && Array.from({ length: event.seatingMap.rows }, (_, row) => (
+                  <text key={`row-${row}`} className="seat-map-axis-label" x="18" y={39 + row * 28} textAnchor="middle">{String.fromCharCode(65 + row)}</text>
+                ))}
+                {selectableSeats.map((seat) => (
+                  <g key={seat.label}>
+                    <rect
+                      x={39 + seat.seat.col * 30}
+                      y={26 + seat.seat.row * 28}
+                      width="22"
+                      height="18"
+                      rx="4"
+                      className={`seat-map-rect ${seat.type === 'VIP' ? 'vip' : ''} ${seat.taken ? 'taken' : ''} ${selectedSeat === seat.label ? 'selected' : ''}`}
+                      onClick={() => {
+                        if (!seat.taken) {
+                          setSelectedSeat(seat.label);
+                        }
+                      }}
+                    />
+                  </g>
+                ))}
+              </svg>
+            </div>
+            <div className="seat-modal-legend">
+              <span><i className="seat-legend-box" /> Standard</span>
+              <span><i className="seat-legend-box vip" /> VIP</span>
+              <span><i className="seat-legend-box taken" /> Taken</span>
+            </div>
+            {joinError && <p className="join-waitlist-note" style={{ color: '#e53e3e' }}>{joinError}</p>}
+            <div className="seat-modal-actions">
+              <button type="button" className="join-btn join-btn--waitlist" onClick={() => setSeatModalOpen(false)}>Cancel</button>
+              <button type="button" className="join-btn" onClick={handleJoin} disabled={!selectedSeat || joinState === 'joining'}>
+                {joinState === 'joining' ? <span className="spinner" /> : `Register ${selectedSeat ? `for ${selectedSeat}` : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -509,6 +628,10 @@ export default function Events({ onNavigate, openEventId = '', onEventOpened }: 
       capacity: 100,
       registered: 50,
       price: 'Free',
+      priceAmount: 0,
+      vipSeatPrice: 0,
+      activeSeats: [],
+      seatingMap: null,
       status: 'open',
       gradient: 'linear-gradient(135deg, #1a2a4a 0%, #2d4a7a 60%, #162a43 100%)',
       emoji: '?',
@@ -614,10 +737,16 @@ export default function Events({ onNavigate, openEventId = '', onEventOpened }: 
   const handleRegistered = (eventId: string, registration: RegistrationRecord) => {
     setRegistrationsByEvent(prev => ({ ...prev, [eventId]: registration }));
     if (registration.status !== 'CONFIRMED') return;
-    setEvents(prev => prev.map(event => event.id === eventId ? { ...event, registered: Math.min(event.capacity, event.registered + 1) } : event));
+    setEvents(prev => prev.map(event => event.id === eventId ? {
+      ...event,
+      registered: Math.min(event.capacity, event.registered + 1),
+      activeSeats: registration.seatLabel && !event.activeSeats.some(seat => seat.seatLabel === registration.seatLabel)
+        ? [...event.activeSeats, { seatLabel: registration.seatLabel, seatType: registration.seatType }]
+        : event.activeSeats,
+    } : event));
   };
 
-  const handleCancelled = (eventId: string, previousStatus: RegistrationStatus, promoted: boolean) => {
+  const handleCancelled = (eventId: string, previousStatus: RegistrationStatus, promoted: boolean, registration: RegistrationRecord | null) => {
     setRegistrationsByEvent(prev => {
       const next = { ...prev };
       delete next[eventId];
@@ -625,7 +754,13 @@ export default function Events({ onNavigate, openEventId = '', onEventOpened }: 
     });
 
     if (previousStatus !== 'CONFIRMED' || promoted) return;
-    setEvents(prev => prev.map(event => event.id === eventId ? { ...event, registered: Math.max(0, event.registered - 1) } : event));
+    setEvents(prev => prev.map(event => event.id === eventId ? {
+      ...event,
+      registered: Math.max(0, event.registered - 1),
+      activeSeats: registration?.seatLabel
+        ? event.activeSeats.filter(seat => seat.seatLabel !== registration.seatLabel)
+        : event.activeSeats,
+    } : event));
   };
 
   if (selectedEvent) {
