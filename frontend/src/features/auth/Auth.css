@@ -809,11 +809,11 @@
   }
 
   .register-form-side {
-    justify-content: flex-start !important;
+    justify-content: center !important;
     align-items: center !important;
     min-height: 100dvh !important;
     height: 100dvh !important;
-    padding: 88px clamp(36px, 4vw, 64px) 24px !important;
+    padding: 76px clamp(36px, 4vw, 64px) 22px !important;
     overflow-y: auto !important;
     scrollbar-gutter: stable;
   }
@@ -821,6 +821,8 @@
   .register-card {
     width: min(100%, 600px) !important;
     max-width: 600px !important;
+    margin-top: auto !important;
+    margin-bottom: auto !important;
   }
 
   .register-header {
@@ -904,8 +906,14 @@
 
 @media (min-width: 1024px) and (max-height: 700px) {
   .register-form-side {
+    justify-content: flex-start !important;
     padding-top: 78px !important;
     padding-bottom: 18px !important;
+  }
+
+  .register-card {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
   }
 
   .register-title {
