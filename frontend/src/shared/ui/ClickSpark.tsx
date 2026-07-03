@@ -38,7 +38,6 @@ export default function ClickSpark({
 
     const handleClick = (e: MouseEvent) => {
       const rect = container.getBoundingClientRect();
-      // Calculate local mouse placement coordinates
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
@@ -50,7 +49,6 @@ export default function ClickSpark({
 
       setSparks((prev) => [...prev, newSpark]);
 
-      // Prune structural instance after duration passes
       setTimeout(() => {
         setSparks((prev) => prev.filter((s) => s.id !== newSpark.id));
       }, duration);

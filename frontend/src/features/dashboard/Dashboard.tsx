@@ -49,11 +49,9 @@ interface DashboardProps {
   onPostOpened?: () => void;
 }
 
-// Types
 type Seat = StageSeat;
 type StageLayout = StageLayoutRecord;
 
-// Mock Data
 function titleCaseEnum(value: string | undefined) {
   if (!value) return 'Organization';
   return value

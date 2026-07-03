@@ -131,7 +131,6 @@ function mapApiEvent(event: EventRecord, index: number): Event {
   };
 }
 
-// Event venue layout SVG renderers
 function ConcertHallLayout({ capacity, registered }: { capacity: number; registered: number }) {
   const rows = [
     { id: 'A', seats: 12, y: 80 },
@@ -276,8 +275,6 @@ function ClassroomLayout({ capacity, registered }: { capacity: number; registere
     </svg>
   );
 }
-
-// Event Detail Page
 
 function EventDetail({ event, registration, onBack, onNavigate, onRegistered, onCancelled }: {
   event: Event;
@@ -662,8 +659,6 @@ function EventDetail({ event, registration, onBack, onNavigate, onRegistered, on
     </div>
   );
 }
-
-// Events List Page
 
 export default function Events({ onNavigate, openEventId = '', onEventOpened }: EventsProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'past'>('all');

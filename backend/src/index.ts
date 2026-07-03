@@ -96,7 +96,6 @@ app.use('/api', (_, res, next) => {
 
 const server = http.createServer(app);
 
-// Setup Socket.io
 const io = new Server(server, {
   cors: {
     origin(origin, callback) {
@@ -114,13 +113,11 @@ Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
   io.adapter(createAdapter(pubClient, subClient));
   console.log('API Socket.io Redis adapter connected');
 
-  // Listen to the custom pub-sub channel from the worker
   const broadcastSub = pubClient.duplicate();
   broadcastSub.connect().then(() => {
     broadcastSub.subscribe('worker-broadcast', (message) => {
       try {
         const { type, payload } = JSON.parse(message);
-        // Emit locally, and adapter automatically manages syncing
         io.emit(type, payload);
       } catch (err) {
         console.error("Failed to parse broadcast", err);

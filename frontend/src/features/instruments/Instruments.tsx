@@ -5,7 +5,6 @@ interface InstrumentsProps {
   onNavigate: (view: 'home' | 'register' | 'login' | 'events' | 'dashboard' | 'instruments') => void;
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
 interface Note { id: string; title: string; content: string; instrument: string; createdAt: string; shared: boolean; sharedWith: string[]; }
 type InstrumentId = 'piano' | 'violin' | 'guitar' | 'flute' | 'drums';
 
@@ -37,7 +36,6 @@ const loadCachedNotes = (): Note[] => {
   }
 };
 
-// ── Instrument Definitions ────────────────────────────────────────────────────
 const INSTRUMENTS: { id: InstrumentId; label: string; emoji: string; roman: string; desc: string; }[] = [
   { id: 'piano',  label: 'Piano',  emoji: '🎹', roman: 'I',   desc: 'Classical keyboard, full range' },
   { id: 'violin', label: 'Violin', emoji: '🎻', roman: 'II',  desc: 'Bowed string, soprano register' },
@@ -46,7 +44,6 @@ const INSTRUMENTS: { id: InstrumentId; label: string; emoji: string; roman: stri
   { id: 'drums',  label: 'Drums',  emoji: '🥁', roman: 'V',   desc: 'Percussion, rhythm section' },
 ];
 
-// ── Audio engine (Web Audio API) ─────────────────────────────────────────────
 function useAudioEngine() {
   const ctxRef = useRef<AudioContext | null>(null);
   const getCtx = () => {
@@ -340,7 +337,6 @@ function FullscreenPiano({ playNote, onClose }: { playNote: (f:number, i:Instrum
   );
 }
 
-// ── Generic fullscreen wrapper for non-piano instruments ─────────────────────
 function FullscreenInstrument({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -380,7 +376,6 @@ function FullscreenInstrument({ label, onClose, children }: { label: string; onC
   );
 }
 
-// ── Instrument Players ───────────────────────────────────────────────────────
 function PianoPlayer({ playNote }: { playNote: (f: number, i: InstrumentId) => void }) {
   const [active, setActive] = useState<Set<string>>(new Set());
   const whites = PIANO_KEYS.filter(k => !k.isBlack);
@@ -580,7 +575,6 @@ function DrumKit({ playNote }: { playNote: (f: number, i: InstrumentId) => void 
   );
 }
 
-// ── Notes Panel ───────────────────────────────────────────────────────────────
 function NotesPanel({ instrument }: { instrument: InstrumentId }) {
   const [notes, setNotes] = useState<Note[]>(loadCachedNotes);
   const [editing, setEditing] = useState<Note | null>(null);
@@ -720,7 +714,6 @@ function NotesPanel({ instrument }: { instrument: InstrumentId }) {
   );
 }
 
-// ── Main Instruments Page ─────────────────────────────────────────────────────
 export default function Instruments({ onNavigate: _onNavigate }: InstrumentsProps) {
   const [selectedInstrument, setSelectedInstrument] = useState<InstrumentId>('piano');
   const [showFullscreen, setShowFullscreen] = useState(false);
