@@ -669,34 +669,7 @@ export default function Events({ onNavigate, openEventId = '', onEventOpened }: 
   const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'past'>('all');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
-  const [events, setEvents] = useState<Event[]>([
-    {
-      id: 'mockup-event',
-      title: 'Mockup Event',
-      category: 'Mockup',
-      date: '2024-01-01',
-      time: '12:00',
-      location: 'Mockup Location',
-      venue: 'Mockup Venue',
-      description: 'This is a mockup event.',
-      longDescription: 'This is a long description of the mockup event.',
-      capacity: 100,
-      registered: 50,
-      price: 'Free',
-      priceAmount: 0,
-      vipSeatPrice: 0,
-      activeSeats: [],
-      seatingMap: null,
-      status: 'open',
-      gradient: 'linear-gradient(135deg, #1a2a4a 0%, #2d4a7a 60%, #162a43 100%)',
-      emoji: '?',
-      organizer: 'Mockup Organizer',
-      organizerType: 'Mockup',
-      program: [],
-      venueLayout: 'concert-hall',
-      tags: ['Mockup'],
-    },
-  ]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [eventsError, setEventsError] = useState('');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
