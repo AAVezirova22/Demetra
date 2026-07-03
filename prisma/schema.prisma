@@ -123,6 +123,7 @@ model OrganizationPost {
   id             String       @id @default(uuid())
   title          String
   body           String       @db.Text
+  image          String?      @db.LongText
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   authorId       String

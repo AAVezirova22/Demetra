@@ -2767,6 +2767,77 @@
   background: #a79a0e !important;
 }
 
+/* Organization post images */
+.post-image-composer {
+  margin-top: 14px;
+}
+
+.post-image-upload {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(167,154,14,0.45);
+  border-radius: 8px;
+  background: rgba(167,154,14,0.06);
+  color: #8f8110;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.post-image-upload input {
+  display: none;
+}
+
+.post-image-preview {
+  display: grid;
+  gap: 10px;
+}
+
+.post-image-preview img,
+.dash-post-card-image,
+.dash-post-detail-image {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+  background: #f5f2eb;
+}
+
+.post-image-preview img {
+  max-height: 260px;
+  border-radius: 8px;
+  border: 1px solid rgba(10,10,8,0.12);
+}
+
+.dash-post-card {
+  overflow: hidden;
+}
+
+.dash-post-card-image {
+  height: 180px;
+  border-bottom: 1px solid rgba(10,10,8,0.1);
+}
+
+.dash-post-detail-image {
+  max-height: 440px;
+  margin-bottom: 22px;
+  border-radius: 8px;
+  border: 1px solid rgba(10,10,8,0.12);
+}
+
+@media (max-width: 760px) {
+  .dash-post-card-image {
+    height: 150px;
+  }
+
+  .dash-post-detail-image {
+    max-height: 300px;
+  }
+}
+
 /* Google Maps location field */
 .location-map-field {
   gap: 10px !important;

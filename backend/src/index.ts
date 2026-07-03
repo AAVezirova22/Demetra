@@ -208,6 +208,7 @@ type OrganizationPostInput =
   | {
       title: string;
       body: string;
+      image: string | null;
     };
 
 function base64Url(input: Buffer | string) {
@@ -635,11 +636,15 @@ function parseStageLayoutInput(body: any): StageLayoutInput {
 function parseOrganizationPostInput(body: any): OrganizationPostInput {
   const title = typeof body.title === 'string' ? body.title.trim().replace(/\s+/g, ' ') : '';
   const bodyText = typeof body.body === 'string' ? body.body.trim() : '';
+  const image = typeof body.image === 'string' ? body.image.trim() : '';
 
   if (title.length < 2 || title.length > 160) return { error: 'Post title must be between 2 and 160 characters.' };
   if (bodyText.length < 2 || bodyText.length > 10000) return { error: 'Post text must be between 2 and 10000 characters.' };
+  if (image && (!image.startsWith('data:image/') || image.length > 1_000_000)) {
+    return { error: 'Post image must be an image under 1 MB.' };
+  }
 
-  return { title, body: bodyText };
+  return { title, body: bodyText, image: image || null };
 }
 
 function publicProfile(user: {
@@ -775,6 +780,7 @@ function publicOrganizationPost(post: any) {
     id: post.id,
     title: post.title,
     body: post.body,
+    image: post.image ?? null,
     organizationId: post.organizationId,
     author: post.author
       ? {
@@ -1245,6 +1251,7 @@ app.post('/api/organization/posts', requireAuth, requireRole(Role.ORGANIZER), as
         data: {
           title: input.title,
           body: input.body,
+          image: input.image,
           organizationId: access.organization.id,
           authorId: req.user!.sub,
         },

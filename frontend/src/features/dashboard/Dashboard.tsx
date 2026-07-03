@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { Globe, Mail, MapPin, MoreHorizontal, Phone, X } from 'lucide-react';
 import {
   cancelEvent,
@@ -74,6 +74,8 @@ function initials(name: string) {
 }
 
 const EVENT_COLORS = ['#4f8ef7', '#7c6df0', '#38b2ac', '#e8aa2e', '#e05c5c', '#48bb78'];
+const POST_IMAGE_MAX_DIMENSION = 1280;
+const POST_IMAGE_MAX_DATA_URL_LENGTH = 1_000_000;
 const ORGANIZATION_KINDS = [
   { value: 'MUSIC_SCHOOL', label: 'Music school' },
   { value: 'CONSERVATORY', label: 'Conservatory' },
@@ -113,6 +115,73 @@ function getGoogleMapsSearchUrl(location: string) {
 
 function getGoogleMapsEmbedUrl(location: string) {
   return `https://www.google.com/maps?q=${encodeURIComponent(location.trim())}&output=embed`;
+}
+
+function dataUrlSize(dataUrl: string) {
+  const base64 = dataUrl.split(',')[1] ?? '';
+  return Math.ceil((base64.length * 3) / 4);
+}
+
+function canvasToDataUrl(canvas: HTMLCanvasElement, type: string, quality: number) {
+  return new Promise<string>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Could not process post image.'));
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+      reader.onerror = () => reject(new Error('Could not read compressed post image.'));
+      reader.readAsDataURL(blob);
+    }, type, quality);
+  });
+}
+
+function loadPostImage(file: File) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Could not read that image.'));
+    };
+    image.src = url;
+  });
+}
+
+async function compressPostImage(file: File) {
+  if (!file.type.startsWith('image/')) throw new Error('Choose an image file for the post.');
+
+  const image = await loadPostImage(file);
+  const scale = Math.min(1, POST_IMAGE_MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight));
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Could not process post image.');
+
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(image, 0, 0, width, height);
+
+  const qualities = [0.82, 0.72, 0.62, 0.52, 0.42, 0.34];
+  let smallest = '';
+  for (const quality of qualities) {
+    const candidate = await canvasToDataUrl(canvas, 'image/webp', quality);
+    if (!smallest || dataUrlSize(candidate) < dataUrlSize(smallest)) smallest = candidate;
+    if (candidate.length <= POST_IMAGE_MAX_DATA_URL_LENGTH) return candidate;
+  }
+
+  if (smallest.length <= POST_IMAGE_MAX_DATA_URL_LENGTH) return smallest;
+  throw new Error('That image is too large for a post.');
 }
 
 function mapDashboardEvent(event: EventRecord, index: number) {
@@ -643,8 +712,26 @@ function PostComposerModal({ onClose, onCreated }: {
 }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [image, setImage] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [processingImage, setProcessingImage] = useState(false);
+
+  const uploadImage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setProcessingImage(true);
+    setError('');
+    try {
+      setImage(await compressPostImage(file));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not process post image.');
+    } finally {
+      setProcessingImage(false);
+      event.target.value = '';
+    }
+  };
 
   const submit = async () => {
     const auth = getStoredAuth();
@@ -655,6 +742,7 @@ function PostComposerModal({ onClose, onCreated }: {
       const { post } = await createOrganizationPost(auth.token, {
         title: title.trim(),
         body: body.trim(),
+        image,
       });
       onCreated(post);
       onClose();
@@ -679,6 +767,19 @@ function PostComposerModal({ onClose, onCreated }: {
         <div className="form-group">
           <label>Text</label>
           <textarea value={body} onChange={e => setBody(e.target.value)} rows={8} placeholder="Write the announcement..." />
+        </div>
+        <div className="post-image-composer">
+          {image ? (
+            <div className="post-image-preview">
+              <img src={image} alt="" />
+              <button type="button" className="dash-action-btn dash-action-btn--danger" onClick={() => setImage(null)}>Remove image</button>
+            </div>
+          ) : (
+            <label className="post-image-upload">
+              {processingImage ? 'Processing image...' : 'Add image'}
+              <input type="file" accept="image/*" onChange={uploadImage} disabled={processingImage} />
+            </label>
+          )}
         </div>
         {error && <div className="auth-error">{error}</div>}
         <div className="modal-footer">
@@ -1085,10 +1186,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
   const [studentSearch, setStudentSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [openEventCutoff] = useState(() => Date.now());
-  const isOrganizer = currentUser?.role === 'ORGANIZER';
   const currentMember = members.find(member => member.id === currentUser?.id);
   const canManageOrganization = Boolean(
-    isOrganizer &&
+    currentUser?.role === 'ORGANIZER' &&
     (currentMember?.status === 'OWNER' || currentMember?.membershipRole === 'ORGANIZER')
   );
   const currentOrganizationName = dashboardOrganization?.name ?? 'Your organization';
@@ -1102,6 +1202,12 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
   useEffect(() => {
     if (currentUser?.organization) setDashboardOrganization(currentUser.organization);
   }, [currentUser?.organization]);
+
+  useEffect(() => {
+    if (!canManageOrganization && (section === 'settings' || section === 'stages')) {
+      setSection('overview');
+    }
+  }, [canManageOrganization, section]);
 
   useEffect(() => {
     const auth = getStoredAuth();
@@ -1386,7 +1492,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
   }, [openPostId]);
 
   const saveOrganizationProfile = () => {
-    if (!profileStorageKey) return;
+    if (!profileStorageKey || !canManageOrganization) return;
 
     localStorage.setItem(profileStorageKey, JSON.stringify({
       organizationName: profileOrganizationName.trim() || currentOrganizationName,
@@ -1417,9 +1523,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
     ...(canManageOrganization ? [{ key: 'stages' as const, label: 'Stage Layouts', icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="5" width="14" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M4 5V3.5C4 2.67 4.67 2 5.5 2h5c.83 0 1.5.67 1.5 1.5V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
     )}] : []),
-    { key: 'settings' as const, label: 'Settings', icon: (
+    ...(canManageOrganization ? [{ key: 'settings' as const, label: 'Settings', icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M2.93 2.93l1.41 1.41M11.66 11.66l1.41 1.41M2.93 13.07l1.41-1.41M11.66 4.34l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-    )},
+    )}] : []),
   ];
 
   const filteredMembers = members.filter(s =>
@@ -1718,6 +1824,9 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                     <button className="dash-create-btn" onClick={() => setSelectedPost(null)}>Back to News</button>
                   </div>
                   <div className="dash-post-detail">
+                    {selectedPost.image && (
+                      <img className="dash-post-detail-image" src={selectedPost.image} alt="" />
+                    )}
                     <div className="dash-post-detail-meta">
                       Posted by {selectedPost.author?.name ?? 'Organizer'} / {new Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(selectedPost.createdAt))}
                     </div>
@@ -1742,6 +1851,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
                       return (
                         <button key={post.id} type="button" className="dash-event-card-full dash-post-card" onClick={() => setSelectedPost(post)} style={{ '--ev-color': color } as any}>
                           <div className="dash-event-card-accent" style={{ background: color }} />
+                          {post.image && <img className="dash-post-card-image" src={post.image} alt="" />}
                           <div className="dash-event-card-full-body">
                             <div className="dash-event-card-full-header">
                               <div>
@@ -1825,7 +1935,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
           )}
 
           {/* Stage Layouts */}
-          {section === 'stages' && (
+          {section === 'stages' && canManageOrganization && (
             <div className="dash-section-content">
               <div className="dash-page-header">
                 <div><div className="dash-breadcrumb">Dashboard / Stage Layouts</div><h1 className="dash-page-title">Stage Layouts</h1></div>
@@ -1858,7 +1968,7 @@ export default function Dashboard({ onNavigate: _onNavigate, currentUser, onOpen
           )}
 
           {/* Settings */}
-          {section === 'settings' && (
+          {section === 'settings' && canManageOrganization && (
             <div className="dash-section-content">
               <div className="dash-page-header">
                 <div><div className="dash-breadcrumb">Dashboard / Settings</div><h1 className="dash-page-title">Organisation Settings</h1></div>

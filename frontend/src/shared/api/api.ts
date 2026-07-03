@@ -135,6 +135,7 @@ export type OrganizationPost = {
   id: string;
   title: string;
   body: string;
+  image: string | null;
   organizationId: string;
   author?: {
     id: string;
@@ -427,7 +428,7 @@ export async function fetchOrganizationPost(token: string, postId: string) {
   });
 }
 
-export async function createOrganizationPost(token: string, input: { title: string; body: string }) {
+export async function createOrganizationPost(token: string, input: { title: string; body: string; image?: string | null }) {
   return apiRequest<{ post: OrganizationPost }>('/organization/posts', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
