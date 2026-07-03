@@ -801,4 +801,121 @@
   }
 }
 
+/* Laptop-height auth layout: keep split view, prevent the form from being clipped. */
+@media (min-width: 1024px) and (max-height: 840px) {
+  .register-container {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+  }
+
+  .register-form-side {
+    justify-content: flex-start !important;
+    align-items: center !important;
+    min-height: 100dvh !important;
+    height: 100dvh !important;
+    padding: 88px clamp(36px, 4vw, 64px) 24px !important;
+    overflow-y: auto !important;
+    scrollbar-gutter: stable;
+  }
+
+  .register-card {
+    width: min(100%, 600px) !important;
+    max-width: 600px !important;
+  }
+
+  .register-header {
+    margin-bottom: 14px !important;
+    padding-bottom: 14px !important;
+  }
+
+  .register-title {
+    font-size: clamp(2rem, 3.2vw, 3.05rem) !important;
+    line-height: 1.02 !important;
+  }
+
+  .register-subtitle {
+    font-size: 0.92rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .role-toggle-container {
+    margin-bottom: 12px !important;
+  }
+
+  .role-toggle-btn {
+    min-height: 38px !important;
+    padding: 8px 10px !important;
+  }
+
+  .register-form {
+    gap: 10px !important;
+  }
+
+  .form-group {
+    gap: 5px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .form-group label {
+    margin-bottom: 5px !important;
+    font-size: 10px !important;
+  }
+
+  .form-group input,
+  .form-group select,
+  .password-input-container input {
+    height: 40px !important;
+  }
+
+  .password-requirements {
+    gap: 5px !important;
+    margin-top: 6px !important;
+    font-size: 0.68rem !important;
+  }
+
+  .password-requirements li {
+    min-height: 21px !important;
+    padding: 0 7px !important;
+  }
+
+  .register-submit-btn {
+    height: 42px !important;
+    margin-top: 6px !important;
+  }
+
+  .register-footer {
+    margin-top: 14px !important;
+    padding-top: 12px !important;
+  }
+
+  .art-overlay {
+    padding: 44px !important;
+  }
+
+  .quote-container {
+    max-width: 500px !important;
+  }
+
+  .quote-text {
+    font-size: clamp(1.55rem, 2.35vw, 2.65rem) !important;
+    line-height: 1.12 !important;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 700px) {
+  .register-form-side {
+    padding-top: 78px !important;
+    padding-bottom: 18px !important;
+  }
+
+  .register-title {
+    font-size: clamp(1.8rem, 2.7vw, 2.55rem) !important;
+  }
+
+  .register-subtitle,
+  .register-footer {
+    font-size: 0.82rem !important;
+  }
+}
+
 
